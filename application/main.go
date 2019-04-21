@@ -15,8 +15,11 @@ import (
 	"syscall"
 	"time"
 
+	pt "git.torproject.org/pluggable-transports/goptlib.git"
+	"git.torproject.org/pluggable-transports/obfs4/transports/obfs4"
+	tls "github.com/refraction-networking/utls"
+
 	zmq "github.com/pebbe/zmq4"
-	"github.com/refraction-networking/utls"
 )
 
 // bufferedReaderConn allows to combine *bufio.Reader(conn) and *conn into one struct.
@@ -104,28 +107,7 @@ func getOriginalDst(fd uintptr) (net.IP, error) {
 	}
 }
 
-func handleNewConn(clientConn *net.TCPConn) {
-	defer clientConn.Close()
-
-	fd, err := clientConn.File()
-	if err != nil {
-		logger.Printf("failed to get file descriptor on clientConn: %v\n", err)
-		return
-	}
-
-	// TODO: if NOT mPort 443: just forward things and return
-
-	originalDstIP, err := getOriginalDst(fd.Fd())
-	if err != nil {
-		logger.Println("failed to getOriginalDst from fd:", err)
-		return
-	}
-
-	reg := registeredDecoys.CheckRegistration(originalDstIP)
-	if reg == nil {
-		logger.Printf("registration for %v not found", originalDstIP)
-		return
-	}
+func threeWayProxy(reg *decoyRegistration, clientConn *net.TCPConn, originalDstIP net.IP) {
 	maskHostPort := reg.mask
 	if _, mPort, err := net.SplitHostPort(maskHostPort); err != nil {
 		maskHostPort = net.JoinHostPort(maskHostPort, "443")
@@ -143,7 +125,6 @@ func handleNewConn(clientConn *net.TCPConn) {
 	flowDescription := fmt.Sprintf("[%s -> %s(%v) -> %s] ",
 		notReallyOriginalSrc, originalDst, maskHostPort, targetHostPort)
 	logger := log.New(os.Stdout, flowDescription, log.Lmicroseconds)
-	logger.Println("new flow")
 
 	maskedConn, err := net.DialTimeout("tcp", maskHostPort, time.Second*10)
 	if err != nil {
@@ -312,38 +293,14 @@ func handleNewConn(clientConn *net.TCPConn) {
 	wg := sync.WaitGroup{}
 	oncePrintErr := sync.Once{}
 	wg.Add(2)
-	halfProxy := func(src, dst net.Conn) {
-		buf := bufferPool.Get().([]byte)
-		_, err = io.CopyBuffer(dst, src, buf)
-		oncePrintErr.Do(
-			func() {
-				if err == nil {
-					logger.Printf("gracefully stopping forwarding from %v", src.RemoteAddr())
-				} else {
-					logger.Printf("stopping forwarding from %v due to error: %v", src.RemoteAddr(), err)
-				}
-			})
-		//if closeWriter, ok := dst.(interface {
-		//	CloseWrite() error
-		//}); ok {
-		//	closeWriter.CloseWrite()
-		//}
-		//
-		//if closeReader, ok := src.(interface {
-		//	CloseRead() error
-		//}); ok {
-		//	closeReader.CloseRead()
-		//}
-		wg.Done()
-	}
 
-	go halfProxy(finalClientConn, finalTargetConn)
+	go halfPipe(finalClientConn, finalTargetConn, wg, oncePrintErr)
 
 	go func() {
 		// wait for readFromServerAndParse to exit first, as it probably haven't seen appdata yet
 		select {
 		case _ = <-serverErrChan:
-			halfProxy(finalTargetConn, finalClientConn)
+			halfPipe(finalClientConn, finalTargetConn, wg, oncePrintErr)
 		case <-time.After(10 * time.Second):
 			finalClientConn.Close()
 			wg.Done()
@@ -352,6 +309,92 @@ func handleNewConn(clientConn *net.TCPConn) {
 	wg.Wait()
 	// closes for all the things are deferred
 	return
+}
+
+func halfPipe(src, dst net.Conn, wg sync.WaitGroup, oncePrintErr sync.Once) {
+	buf := bufferPool.Get().([]byte)
+	_, err := io.CopyBuffer(dst, src, buf)
+	oncePrintErr.Do(
+		func() {
+			if err == nil {
+				logger.Printf("gracefully stopping forwarding from %v", src.RemoteAddr())
+			} else {
+				logger.Printf("stopping forwarding from %v due to error: %v", src.RemoteAddr(), err)
+			}
+		})
+	//if closeWriter, ok := dst.(interface {
+	//	CloseWrite() error
+	//}); ok {
+	//	closeWriter.CloseWrite()
+	//}
+	//
+	//if closeReader, ok := src.(interface {
+	//	CloseRead() error
+	//}); ok {
+	//	closeReader.CloseRead()
+	//}
+	wg.Done()
+}
+
+func handleNewConn(clientConn *net.TCPConn) {
+	defer clientConn.Close()
+
+	fd, err := clientConn.File()
+	if err != nil {
+		logger.Printf("failed to get file descriptor on clientConn: %v\n", err)
+		return
+	}
+
+	// TODO: if NOT mPort 443: just forward things and return
+
+	originalDstIP, err := getOriginalDst(fd.Fd())
+	if err != nil {
+		logger.Println("failed to getOriginalDst from fd:", err)
+		return
+	}
+
+	reg := registeredDecoys.CheckRegistration(originalDstIP)
+	if reg == nil {
+		logger.Printf("registration for %v not found", originalDstIP)
+		return
+	}
+
+	//threeWayProxy(reg, clientConn, originalDstIP)
+	obfs4Wrap(reg, clientConn, originalDstIP)
+}
+
+func obfs4Wrap(reg *decoyRegistration, clientConn *net.TCPConn, _ net.IP) {
+	// generate "public-key" and private
+	args := &pt.Args{}
+	args.Add("node-id", "value")
+	args.Add("private-key", "value")
+	args.Add("drbg-seed", "value")
+
+	factory, err := obfs4.Transport{}.ServerFactory("", args)
+	if err != nil {
+		logger.Println("failed to create ServerFactory:", err)
+		return
+	}
+	obfsClientConn, err := factory.WrapConn(clientConn)
+	if err != nil {
+		logger.Println("failed to factory.WrapConn:", err)
+		return
+	}
+	defer obfsClientConn.Close()
+
+	covertConn, err := net.Dial("tcp", reg.covert)
+	if err != nil {
+		logger.Printf("failed to dial target: %s", err)
+	}
+	defer covertConn.Close()
+
+	wg := sync.WaitGroup{}
+	oncePrintErr := sync.Once{}
+	wg.Add(2)
+
+	go halfPipe(obfsClientConn, covertConn, wg, oncePrintErr)
+	go halfPipe(covertConn, obfsClientConn, wg, oncePrintErr)
+	wg.Wait()
 }
 
 func get_zmq_updates() {
