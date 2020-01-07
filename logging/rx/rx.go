@@ -21,22 +21,17 @@ type RX struct {
 }
 
 func GetAppRx() *RX {
-	AR := RX{regexps: make(map[string]*regexp.Regexp)}
-
-	for k, v := range appRules {
-		err := AR.Add(k, v)
-		if err != nil {
-			return nil
-		}
-	}
-
-	return &AR
+	return InitRxSet(appRules)
 }
 
 func GetDetectorRx() *RX {
+	return InitRxSet(detectorRules)
+}
+
+func InitRxSet(rules map[string]string) *RX {
 	AR := RX{regexps: make(map[string]*regexp.Regexp)}
 
-	for k, v := range detectorRules {
+	for k, v := range rules {
 		err := AR.Add(k, v)
 		if err != nil {
 			return nil
