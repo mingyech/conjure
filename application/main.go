@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/refraction-networking/conjure/application/transports"
+	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
 )
@@ -491,6 +492,10 @@ func main() {
 		logger.Printf("failed to add transport: %v", err)
 	}
 	// UDP-TODO: Setup all UDP transports and add them to the registration manager.
+	err = regManager.AddTransport(pb.TransportType_Dtls, dtls.Transport{})
+	if err != nil {
+		logger.Printf("failed to add transport: %v", err)
+	}
 
 	// Receive registration updates from ZMQ Proxy as subscriber
 	go get_zmq_updates(zmqAddress, regManager, conf)
