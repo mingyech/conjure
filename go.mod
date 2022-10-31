@@ -13,6 +13,8 @@ require (
 	github.com/mroth/weightedrand v0.4.1
 	github.com/pebbe/zmq4 v1.2.7
 	github.com/pelletier/go-toml v1.9.4
+	github.com/pion/dtls/v2 v2.1.5
+	github.com/pion/transport v0.13.1 // indirect
 	github.com/refraction-networking/gotapdance v1.3.1
 	github.com/refraction-networking/utls v1.1.0
 	github.com/sirupsen/logrus v1.8.1
