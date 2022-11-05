@@ -16,12 +16,10 @@ require (
 	github.com/pion/dtls/v2 v2.1.5
 	github.com/pion/transport v0.13.1 // indirect
 	github.com/refraction-networking/gotapdance v1.3.1
-	github.com/refraction-networking/utls v1.1.0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.7.1
 	gitlab.com/yawning/obfs4.git v0.0.0-20220204003609-77af0cba934d
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
-	golang.org/x/net v0.0.0-20221002022538-bcab6841153b // indirect
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.28.0
 )

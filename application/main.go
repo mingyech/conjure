@@ -5,27 +5,20 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
-	"io"
-	"log"
 	"math/rand"
-	"net"
-	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
-	zmq "github.com/pebbe/zmq4"
 	cj "github.com/refraction-networking/conjure/application/lib"
-	lt "github.com/refraction-networking/conjure/application/liveness"
-	pb "github.com/refraction-networking/gotapdance/protobuf"
-	"google.golang.org/protobuf/proto"
-
-	"github.com/refraction-networking/conjure/application/transports"
+	"github.com/refraction-networking/conjure/application/log"
 	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
+	pb "github.com/refraction-networking/gotapdance/protobuf"
 )
 
 func getOriginalDst(fd uintptr) (net.IP, error) {
@@ -444,6 +437,11 @@ func recieve_zmq_message(sub *zmq.Socket, regManager *cj.RegistrationManager, co
 var logger *log.Logger
 var logClientIP = false
 
+var enabledTransports = map[pb.TransportType]cj.Transport{
+	pb.TransportType_Min:   min.Transport{},
+	pb.TransportType_Obfs4: obfs4.Transport{},
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	var err error
@@ -451,45 +449,43 @@ func main() {
 	flag.StringVar(&zmqAddress, "zmq-address", "ipc://@zmq-proxy", "Address of ZMQ proxy")
 	flag.Parse()
 
-	regManager := cj.NewRegistrationManager()
-	logger = regManager.Logger
-
-	// Should we log client IP addresses
-	logClientIP, err = strconv.ParseBool(os.Getenv("LOG_CLIENT_IP"))
-	if err != nil {
-		logger.Printf("failed parse client ip logging setting: %v\n", err)
-		logClientIP = false
-	}
-
 	// Init stats
 	cj.Stat()
 
 	// parse toml station configuration
 	conf, err := cj.ParseConfig()
 	if err != nil {
-		logger.Fatalf("failed to parse app config: %v", err)
+		log.Fatalf("failed to parse app config: %v", err)
 	}
 
-	if conf.CacheExpirationTime != "" {
-		clt := &lt.CachedLivenessTester{}
-		err = clt.Init(conf.CacheExpirationTime)
-		if err != nil {
-			logger.Fatal(err)
+	// parse & set log level for the lib for which sets the default level all
+	// loggers created by subroutines routines.
+	var logLevel = log.ErrorLevel
+	if conf.LogLevel != "" {
+		logLevel, err = log.ParseLevel(conf.LogLevel)
+		if err != nil || logLevel == log.UnknownLevel {
+			log.Fatal(err)
 		}
-		regManager.LivenessTester = clt
+	}
+	log.SetLevel(logLevel)
+
+	regManager := cj.NewRegistrationManager(conf.RegConfig)
+	sharedLogger = regManager.Logger
+	logger := sharedLogger
+
+	// Should we log client IP addresses
+	logClientIP, err = strconv.ParseBool(os.Getenv("LOG_CLIENT_IP"))
+	if err != nil {
+		logger.Errorf("failed parse client ip logging setting: %v\n", err)
+		logClientIP = false
 	}
 
-	// Launch local ZMQ proxy
-	go cj.ZMQProxy(conf.ZMQConfig)
-
-	// Add registration channel options
-	err = regManager.AddTransport(pb.TransportType_Min, min.Transport{})
-	if err != nil {
-		logger.Printf("failed to add transport: %v", err)
-	}
-	err = regManager.AddTransport(pb.TransportType_Obfs4, obfs4.Transport{})
-	if err != nil {
-		logger.Printf("failed to add transport: %v", err)
+	// Add supported transport options for registration validation
+	for transportType, transport := range enabledTransports {
+		err = regManager.AddTransport(transportType, transport)
+		if err != nil {
+			logger.Errorf("failed to add transport: %v", err)
+		}
 	}
 	// UDP-TODO: Setup all UDP transports and add them to the registration manager.
 	err = regManager.AddTransport(pb.TransportType_Dtls, dtls.Transport{})
@@ -497,33 +493,64 @@ func main() {
 		logger.Printf("failed to add transport: %v", err)
 	}
 
-	// Receive registration updates from ZMQ Proxy as subscriber
-	go get_zmq_updates(zmqAddress, regManager, conf)
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := new(sync.WaitGroup)
+	regChan := make(chan interface{}, 10000)
+	zmqIngester := cj.NewZMQIngest(zmqAddress, regChan, conf.ZMQConfig)
+
+	connManager := newConnManager(nil)
+
+	cj.Stat().AddStatsModule(zmqIngester)
+	cj.Stat().AddStatsModule(regManager.LivenessTester)
+	cj.Stat().AddStatsModule(cj.GetProxyStats())
+	cj.Stat().AddStatsModule(regManager)
+	cj.Stat().AddStatsModule(connManager)
 
 	// Periodically clean old registrations
-	go func() {
+	wg.Add(1)
+	go func(ctx context.Context, wg *sync.WaitGroup) {
+		defer wg.Done()
+
+		ticker := time.NewTicker(3 * time.Minute)
 		for {
-			time.Sleep(3 * time.Minute)
-			regManager.RemoveOldRegistrations()
+			select {
+			case <-ticker.C:
+				regManager.RemoveOldRegistrations()
+			case <-ctx.Done():
+				return
+			}
 		}
-	}()
+	}(ctx, wg)
 
-	// listen for and handle incoming proxy traffic
-	listenAddr := &net.TCPAddr{IP: nil, Port: 41245, Zone: ""}
-	ln, err := net.ListenTCP("tcp", listenAddr)
-	if err != nil {
-		logger.Printf("failed to listen on %v: %v\n", listenAddr, err)
-		return
-	}
-	defer ln.Close()
-	logger.Printf("[STARTUP] Listening on %v\n", ln.Addr())
+	// Receive registration updates from ZMQ Proxy as subscriber
+	go zmqIngester.RunZMQ(ctx)
+	wg.Add(1)
+	go regManager.HandleRegUpdates(ctx, regChan, wg)
+	go connManager.acceptConnections(ctx, regManager, logger)
 
-	for {
-		newConn, err := ln.AcceptTCP()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	for sig := range sigCh {
+		// Wait for close signal.
+		if sig != syscall.SIGHUP {
+			logger.Infof("received %s ... exiting\n", sig.String())
+			break
+		}
+
+		// Use SigHUP to indicate config reload
+		logger.Infoln("received SIGHUP ... reloading configs")
+
+		// parse toml station configuration. If parse fails, log and abort
+		// reload.
+		newConf, err := cj.ParseConfig()
 		if err != nil {
-			logger.Printf("[ERROR] failed to AcceptTCP on %v: %v\n", ln.Addr(), err)
-			continue
+			log.Errorf("failed to parse app config: %v", err)
+		} else {
+			regManager.OnReload(newConf.RegConfig)
 		}
-		go handleNewConn(regManager, newConn)
 	}
+
+	cancel()
+	wg.Wait()
+	logger.Infof("shutdown complete")
 }
