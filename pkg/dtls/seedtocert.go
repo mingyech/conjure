@@ -1,4 +1,4 @@
-package dtlstransport
+package dtls
 
 //Adapted from https://github.com/gaukas/seed2sdp/blob/master/dtlsCertificate.go
 

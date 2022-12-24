@@ -1,4 +1,4 @@
-package dtlstransport
+package dtls
 
 import (
 	"crypto/rand"
