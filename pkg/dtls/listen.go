@@ -163,8 +163,8 @@ func (l *Listener) verifyCertificate(rawCerts [][]byte, verifiedChains [][]*x509
 	return nil
 }
 
-// AcceptFromSeed accepts a connection with a seed
-func (l *Listener) AcceptFromSeed(secret []byte) (net.Conn, error) {
+// AcceptFromSecret accepts a connection with a seed
+func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(secret)
 	if err != nil {
 		return &dtls.Conn{}, fmt.Errorf("error generating certificatess from seed: %v", err)
