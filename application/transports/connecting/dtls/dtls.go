@@ -11,6 +11,8 @@ import (
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 )
 
+const port int = 4444
+
 type Transport struct {
 	dtlsListener *dtls.Listener
 }
@@ -32,7 +34,7 @@ func (t Transport) GetIdentifier(reg *dd.DecoyRegistration) string {
 
 // NewDTLSTransport creates a new dtls transport
 func NewDTLSTransport() (*Transport, error) {
-	addr := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 4444}
+	addr := &net.UDPAddr{Port: port}
 
 	listener, err := dtls.Listen(addr)
 	if err != nil {
@@ -52,7 +54,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 
 	conn, err := t.dtlsListener.AcceptFromSecret(reg.Keys.SharedSecret)
 	if err != nil {
-		return nil, fmt.Errorf("error accepting dtls from secret: %v", err)
+		return nil, fmt.Errorf("error accepting dtls connection from secret: %v", err)
 	}
 
 	return conn, nil
