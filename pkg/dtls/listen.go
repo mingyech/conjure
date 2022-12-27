@@ -112,7 +112,7 @@ func (l *Listener) acceptLoop() {
 			connState := newDTLSConn.ConnectionState()
 			connID := connState.RemoteRandomBytes()
 
-			// Wrap SCTP on top of DTLS connection
+			// Start SCTP over DTLS connection
 			sctpConfig := sctp.Config{
 				NetConn:       newDTLSConn,
 				LoggerFactory: logging.NewDefaultLoggerFactory(),
@@ -130,8 +130,8 @@ func (l *Listener) acceptLoop() {
 
 			sctpConn := &sctpConn{Stream: sctpStream, DTLSConn: newDTLSConn}
 
-			l.connMapMutex.Lock()
-			defer l.connMapMutex.Unlock()
+			l.connMapMutex.RLock()
+			defer l.connMapMutex.RUnlock()
 
 			acceptChan, ok := l.connMap[connID]
 
@@ -142,7 +142,6 @@ func (l *Listener) acceptLoop() {
 			acceptChan <- sctpConn
 
 			close(acceptChan)
-			delete(l.connMap, connID)
 		}()
 	}
 }
@@ -179,7 +178,7 @@ func (l *Listener) verifyConnection(state *dtls.State) error {
 	return nil
 }
 
-// AcceptFromSecret accepts a connection with a seed
+// AcceptFromSecret accepts a connection with shared secret
 func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(secret)
 	if err != nil {
@@ -191,22 +190,49 @@ func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
 		return &dtls.Conn{}, err
 	}
 
-	l.connToCertMutex.Lock()
-	l.connToCert[connID] = &certPair{clientCert: clientCert, serverCert: serverCert}
-	l.connToCertMutex.Unlock()
+	l.registerCert(connID, clientCert, serverCert)
+	defer l.removeCert(connID)
 
-	l.connMapMutex.Lock()
-
-	if l.connMap[connID] != nil {
-		return &dtls.Conn{}, fmt.Errorf("seed has already been registered")
+	connChan, err := l.registerChannel(connID)
+	if err != nil {
+		return nil, fmt.Errorf("error registering channel: %v", err)
 	}
-
-	connChan := make(chan net.Conn)
-	l.connMap[connID] = connChan
-	l.connMapMutex.Unlock()
+	defer l.removeChannel(connID)
 
 	conn := <-connChan
 
 	return conn, nil
+}
 
+func (l *Listener) registerCert(connID [handshake.RandomBytesLength]byte, clientCert, serverCert *tls.Certificate) {
+	l.connToCertMutex.Lock()
+	defer l.connToCertMutex.Unlock()
+	l.connToCert[connID] = &certPair{clientCert: clientCert, serverCert: serverCert}
+}
+
+func (l *Listener) removeCert(connID [handshake.RandomBytesLength]byte) {
+	l.connToCertMutex.Lock()
+	defer l.connToCertMutex.Unlock()
+	delete(l.connToCert, connID)
+}
+
+func (l *Listener) registerChannel(connID [handshake.RandomBytesLength]byte) (<-chan net.Conn, error) {
+	l.connMapMutex.Lock()
+	defer l.connMapMutex.Unlock()
+
+	if l.connMap[connID] != nil {
+		return nil, fmt.Errorf("seed already registered")
+	}
+
+	connChan := make(chan net.Conn)
+	l.connMap[connID] = connChan
+
+	return connChan, nil
+}
+
+func (l *Listener) removeChannel(connID [handshake.RandomBytesLength]byte) {
+	l.connMapMutex.Lock()
+	defer l.connMapMutex.Unlock()
+
+	delete(l.connMap, connID)
 }
