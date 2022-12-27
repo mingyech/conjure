@@ -12,7 +12,6 @@ require (
 	github.com/mroth/weightedrand v0.4.1
 	github.com/pebbe/zmq4 v1.2.7
 	github.com/pelletier/go-toml v1.9.4
-	github.com/pion/dtls/v2 v2.1.6-0.20221201105059-0b114548d59d
 	github.com/pion/logging v0.2.2
 	github.com/pion/sctp v1.8.5
 	github.com/refraction-networking/gotapdance v1.3.1
