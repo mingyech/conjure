@@ -8,7 +8,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/pion/dtls/v2"
+	"github.com/mingyech/dtls/v2"
+	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
 	"github.com/pion/logging"
 	"github.com/pion/sctp"
 )
@@ -16,9 +17,9 @@ import (
 // Listener represents a DTLS Listener
 type Listener struct {
 	dtlsListener    net.Listener
-	connMap         map[string](chan net.Conn)
+	connMap         map[[handshake.RandomBytesLength]byte](chan net.Conn)
 	connMapMutex    sync.RWMutex
-	connToCert      map[string]*certPair
+	connToCert      map[[handshake.RandomBytesLength]byte]*certPair
 	connToCertMutex sync.RWMutex
 	defaultCert     *tls.Certificate
 }
@@ -38,17 +39,17 @@ func Listen(addr *net.UDPAddr) (*Listener, error) {
 	}
 
 	newDTLSListner := Listener{
-		connMap:     map[string](chan net.Conn){},
-		connToCert:  map[string]*certPair{},
+		connMap:     map[[handshake.RandomBytesLength]byte](chan net.Conn){},
+		connToCert:  map[[handshake.RandomBytesLength]byte]*certPair{},
 		defaultCert: defaultCert,
 	}
 
 	// Prepare the configuration of the DTLS connection
 	config := &dtls.Config{
-		ExtendedMasterSecret:  dtls.RequireExtendedMasterSecret,
-		ClientAuth:            dtls.RequireAnyClientCert,
-		VerifyPeerCertificate: newDTLSListner.verifyCertificate,
-		GetCertificate:        newDTLSListner.getCertificateFromClientHello,
+		ExtendedMasterSecret: dtls.RequireExtendedMasterSecret,
+		ClientAuth:           dtls.RequireAnyClientCert,
+		GetCertificate:       newDTLSListner.getCertificateFromClientHello,
+		VerifyConnection:     newDTLSListner.verifyConnection,
 	}
 
 	listener, err := dtls.Listen("udp", addr, config)
@@ -73,14 +74,26 @@ func randomCertificate() (*tls.Certificate, error) {
 }
 
 func (l *Listener) getCertificateFromClientHello(clientHello *dtls.ClientHelloInfo) (*tls.Certificate, error) {
-	if clientHello.ServerName == "" {
+	if clientHello.CipherSuites == nil {
 		return l.defaultCert, nil
 	}
 
 	l.connToCertMutex.RLock()
 	defer l.connToCertMutex.RUnlock()
 
-	return l.connToCert[clientHello.ServerName].serverCert, nil
+	certs, ok := l.connToCert[clientHello.RandomBytes]
+
+	if !ok {
+		// Respond with random server certificate if not registered, will reject client cert later during handshake
+		randomCert, err := randomCertificate()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate random certificate: %v", err)
+		}
+
+		return randomCert, nil
+	}
+
+	return certs.serverCert, nil
 }
 
 func (l *Listener) acceptLoop() {
@@ -96,11 +109,8 @@ func (l *Listener) acceptLoop() {
 				return
 			}
 
-			rawCerts := newDTLSConn.ConnectionState().PeerCertificates
-			connID, err := connIDFromCertificate(rawCerts[0])
-			if err != nil {
-				return
-			}
+			connState := newDTLSConn.ConnectionState()
+			connID := connState.RemoteRandomBytes()
 
 			// Wrap SCTP on top of DTLS connection
 			sctpConfig := sctp.Config{
@@ -137,29 +147,35 @@ func (l *Listener) acceptLoop() {
 	}
 }
 
-func (l *Listener) verifyCertificate(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-	if verifiedChains != nil {
-		return fmt.Errorf("unexpected non-nil verified chain")
+func (l *Listener) verifyConnection(state *dtls.State) error {
+
+	certs, ok := l.connToCert[state.RemoteRandomBytes()]
+	if !ok {
+		return fmt.Errorf("no matching certificate found with client hello random")
 	}
 
-	if len(rawCerts) != 1 {
-		return fmt.Errorf("expected 1 self-signed certificate, got %v", len(rawCerts))
+	if len(state.PeerCertificates) != 1 {
+		return fmt.Errorf("expected 1 peer certificate, got %v", len(state.PeerCertificates))
 	}
 
-	// Check if incomming client certificate was registered
-	connID, err := connIDFromCertificate(rawCerts[0])
+	incommingCert, err := x509.ParseCertificate(state.PeerCertificates[0])
 	if err != nil {
-		return fmt.Errorf("error getting conn ID from certificate: %v", err)
+		return fmt.Errorf("error parsing peer certificate: %v", err)
 	}
 
-	l.connMapMutex.RLock()
-	defer l.connMapMutex.RUnlock()
-
-	if l.connMap[connID] == nil {
-		return fmt.Errorf("no registered connection ID with certificate")
+	correctCert, err := x509.ParseCertificate(certs.clientCert.Certificate[0])
+	if err != nil {
+		return fmt.Errorf("error parsing correct certificate: %v", err)
 	}
 
-	// All good
+	verifyWith := x509.NewCertPool()
+	verifyWith.AddCert(correctCert)
+
+	_, err = incommingCert.Verify(x509.VerifyOptions{Roots: verifyWith})
+	if err != nil {
+		return fmt.Errorf("error verifying peer certificate: %v", err)
+	}
+
 	return nil
 }
 
@@ -170,16 +186,14 @@ func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
 		return &dtls.Conn{}, fmt.Errorf("error generating certificatess from seed: %v", err)
 	}
 
-	connID, err := connIDFromCertificate(clientCert.Certificate[0])
-
-	l.connToCertMutex.Lock()
-
-	l.connToCert[connID] = &certPair{clientCert: clientCert, serverCert: serverCert}
-	l.connToCertMutex.Unlock()
-
+	connID, err := clientHelloRandomFromSeed(secret)
 	if err != nil {
 		return &dtls.Conn{}, err
 	}
+
+	l.connToCertMutex.Lock()
+	l.connToCert[connID] = &certPair{clientCert: clientCert, serverCert: serverCert}
+	l.connToCertMutex.Unlock()
 
 	l.connMapMutex.Lock()
 
@@ -195,13 +209,4 @@ func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
 
 	return conn, nil
 
-}
-
-func connIDFromCertificate(cert []byte) (string, error) {
-	certDer, err := x509.ParseCertificate(cert)
-
-	if err != nil {
-		return "", fmt.Errorf("error parsing generated client certificate: %v", err)
-	}
-	return string(certDer.Subject.CommonName), nil
 }

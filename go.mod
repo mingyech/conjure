@@ -8,6 +8,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/mingyech/dtls/v2 v2.0.0-20221227014520-4beb8468ab6e
 	github.com/mroth/weightedrand v0.4.1
 	github.com/pebbe/zmq4 v1.2.7
 	github.com/pelletier/go-toml v1.9.4

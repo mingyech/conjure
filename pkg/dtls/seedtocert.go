@@ -15,10 +15,23 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
 	"github.com/refraction-networking/conjure/internal/crypto/ecdsa"
 	"github.com/refraction-networking/conjure/internal/crypto/x509"
 	"golang.org/x/crypto/hkdf"
 )
+
+func clientHelloRandomFromSeed(seed []byte) ([handshake.RandomBytesLength]byte, error) {
+	randSource := hkdf.New(sha256.New, seed, nil, nil)
+	randomBytes := [handshake.RandomBytesLength]byte{}
+
+	_, err := io.ReadFull(randSource, randomBytes[:])
+	if err != nil {
+		return [handshake.RandomBytesLength]byte{}, err
+	}
+
+	return randomBytes, nil
+}
 
 // getPrivkey creates ECDSA private key used in DTLS Certificates
 func getPrivkey(seed []byte) (*ecdsa.PrivateKey, error) {

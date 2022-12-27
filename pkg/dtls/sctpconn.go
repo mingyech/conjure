@@ -4,7 +4,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/pion/dtls/v2"
+	"github.com/mingyech/dtls/v2"
 	"github.com/pion/sctp"
 )
 

@@ -8,7 +8,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/pion/dtls/v2"
+	"github.com/mingyech/dtls/v2"
+	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
 	"github.com/pion/logging"
 	"github.com/pion/sctp"
 )
@@ -37,12 +38,18 @@ func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) 
 
 	certPool.AddCert(serverCertDer)
 
+	clientHelloRandom, err := clientHelloRandomFromSeed(seed)
+	if err != nil {
+		return nil, fmt.Errorf("error generating client hello random: %v", err)
+	}
+	fmt.Println(string(clientHelloRandom[:]))
+
 	// Prepare the configuration of the DTLS connection
 	config := &dtls.Config{
-		Certificates:         []tls.Certificate{*clientCert},
-		ExtendedMasterSecret: dtls.RequireExtendedMasterSecret,
-		RootCAs:              certPool,
-		ServerName:           serverCertDer.Subject.CommonName,
+		Certificates:            []tls.Certificate{*clientCert},
+		ExtendedMasterSecret:    dtls.RequireExtendedMasterSecret,
+		RootCAs:                 certPool,
+		CustomClientHelloRandom: func() [handshake.RandomBytesLength]byte { return clientHelloRandom },
 	}
 
 	// Connect to a DTLS server
