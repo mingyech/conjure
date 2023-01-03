@@ -73,11 +73,6 @@ type WrappingTransport interface {
 	WrapConnection(data *bytes.Buffer, conn net.Conn, phantom net.IP, rm *RegistrationManager) (reg *DecoyRegistration, wrapped net.Conn, err error)
 }
 
-// UDP-TODO: ConnectingTransport could be used for UDP Transports.
-// In the nature that UDP Transport per se needs to be bound to
-// a socket/port when setup and doesn't require an incoming connection
-// at call time.
-
 // ConnectingTransport describes transports that actively form an
 // outgoing connection to clients to initiate the conversation.
 type ConnectingTransport interface {
@@ -192,8 +187,6 @@ func (regManager *RegistrationManager) GetWrappingTransports() map[pb.TransportT
 
 	return m
 }
-
-// UDP-TODO: GetConnectingTransports could be used for UDP Transport when receiving registrations.
 
 // GetConnectingTransports Returns a map of the connecting transport types to their transports. This return value
 // can be mutated freely.
