@@ -3,11 +3,12 @@ package dtls
 //Adapted from https://github.com/gaukas/seed2sdp/blob/master/dtlsCertificate.go
 
 import (
-	ecdsa_go "crypto/ecdsa"
+	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
 	"fmt"
@@ -16,8 +17,6 @@ import (
 	"time"
 
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
-	"github.com/refraction-networking/conjure/internal/crypto/ecdsa"
-	"github.com/refraction-networking/conjure/internal/crypto/x509"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -45,12 +44,12 @@ func getPrivkey(seed []byte) (*ecdsa.PrivateKey, error) {
 }
 
 // getPrivkey creates ECDSA private key used in DTLS Certificates
-func getPrivkeyGo(seed []byte) (*ecdsa_go.PrivateKey, error) {
+func getPrivkeyGo(seed []byte) (*ecdsa.PrivateKey, error) {
 	randSource := hkdf.New(sha256.New, seed, nil, nil)
 
-	privkey, err := ecdsa_go.GenerateKey(elliptic.P256(), randSource)
+	privkey, err := ecdsa.GenerateKey(elliptic.P256(), randSource)
 	if err != nil {
-		return &ecdsa_go.PrivateKey{}, err
+		return &ecdsa.PrivateKey{}, err
 	}
 
 	return privkey, nil

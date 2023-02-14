@@ -157,22 +157,29 @@ func (l *Listener) verifyConnection(state *dtls.State) error {
 		return fmt.Errorf("expected 1 peer certificate, got %v", len(state.PeerCertificates))
 	}
 
-	incommingCert, err := x509.ParseCertificate(state.PeerCertificates[0])
+	err := verifyCert(state.PeerCertificates[0], certs.clientCert.Certificate[0])
+	if err != nil {
+		return fmt.Errorf("error verifying peer certificate: %v", err)
+	}
+
+	return nil
+}
+
+func verifyCert(cert, correct []byte) error {
+	incommingCert, err := x509.ParseCertificate(cert)
 	if err != nil {
 		return fmt.Errorf("error parsing peer certificate: %v", err)
 	}
 
-	correctCert, err := x509.ParseCertificate(certs.clientCert.Certificate[0])
+	correctCert, err := x509.ParseCertificate(correct)
 	if err != nil {
 		return fmt.Errorf("error parsing correct certificate: %v", err)
 	}
 
-	verifyWith := x509.NewCertPool()
-	verifyWith.AddCert(correctCert)
-
-	_, err = incommingCert.Verify(x509.VerifyOptions{Roots: verifyWith})
+	correctCert.KeyUsage = x509.KeyUsageCertSign // CheckSignature have requirements for the KeyUsage field
+	err = incommingCert.CheckSignatureFrom(correctCert)
 	if err != nil {
-		return fmt.Errorf("error verifying peer certificate: %v", err)
+		return fmt.Errorf("error verifying certificate signature: %v", err)
 	}
 
 	return nil

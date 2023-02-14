@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net"
-	"time"
 
 	"github.com/mingyech/dtls/v2"
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
@@ -16,13 +15,11 @@ import (
 
 // Dial creates a DTLS connection to the given network address using the given shared secret
 func Dial(remoteAddr *net.UDPAddr, secret []byte) (net.Conn, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	return DialWithContext(ctx, remoteAddr, secret)
+	return DialContext(context.Background(), remoteAddr, secret)
 }
 
-// DialWithContext creates a DTLS connection to the given network address using the given shared secret
-func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
+// DialContext creates a DTLS connection to the given network address using the given shared secret
+func DialContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(seed)
 
 	if err != nil {
@@ -44,12 +41,31 @@ func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) 
 	}
 	fmt.Println(string(clientHelloRandom[:]))
 
+	verifyServerCertificate := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+		if len(rawCerts) != 1 {
+			return fmt.Errorf("expected 1 peer certificate, got %v", len(rawCerts))
+		}
+
+		err := verifyCert(rawCerts[0], serverCert.Certificate[0])
+		if err != nil {
+			return fmt.Errorf("error verifying server certificate: %v", err)
+		}
+
+		return nil
+	}
+
 	// Prepare the configuration of the DTLS connection
 	config := &dtls.Config{
 		Certificates:            []tls.Certificate{*clientCert},
 		ExtendedMasterSecret:    dtls.RequireExtendedMasterSecret,
 		RootCAs:                 certPool,
 		CustomClientHelloRandom: func() [handshake.RandomBytesLength]byte { return clientHelloRandom },
+
+		// we verify the peer's cert using VerifyPeerCertificate, because go does not generate dertiministic
+		// ecdsa signatures in certificate and checks self signed certificate by comparing their hashes,
+		// so the verification fails unless we check the signature without using hashes ourselves
+		InsecureSkipVerify:    true,
+		VerifyPeerCertificate: verifyServerCertificate,
 	}
 
 	// Connect to a DTLS server
