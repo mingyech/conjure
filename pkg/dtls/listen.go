@@ -74,6 +74,8 @@ func randomCertificate() (*tls.Certificate, error) {
 }
 
 func (l *Listener) getCertificateFromClientHello(clientHello *dtls.ClientHelloInfo) (*tls.Certificate, error) {
+	// This function is sometimes called by the dtls library to get the availiable ciphersuites,
+	// respond with a default certificate with the availible ciphersuites
 	if clientHello.CipherSuites == nil {
 		return l.defaultCert, nil
 	}

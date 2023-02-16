@@ -15,31 +15,21 @@ import (
 
 // Dial creates a DTLS connection to the given network address using the given shared secret
 func Dial(remoteAddr *net.UDPAddr, secret []byte) (net.Conn, error) {
-	return DialContext(context.Background(), remoteAddr, secret)
+	return DialWithContext(context.Background(), remoteAddr, secret)
 }
 
-// DialContext creates a DTLS connection to the given network address using the given shared secret
-func DialContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
+// DialWithContext creates a DTLS connection to the given network address using the given shared secret
+func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(seed)
 
 	if err != nil {
 		return nil, fmt.Errorf("error generating certs: %v", err)
 	}
 
-	certPool := x509.NewCertPool()
-
-	serverCertDer, err := x509.ParseCertificate(serverCert.Certificate[0])
-	if err != nil {
-		return nil, fmt.Errorf("error parsing cert: %v", err)
-	}
-
-	certPool.AddCert(serverCertDer)
-
 	clientHelloRandom, err := clientHelloRandomFromSeed(seed)
 	if err != nil {
 		return nil, fmt.Errorf("error generating client hello random: %v", err)
 	}
-	fmt.Println(string(clientHelloRandom[:]))
 
 	verifyServerCertificate := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 		if len(rawCerts) != 1 {
@@ -58,7 +48,6 @@ func DialContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net
 	config := &dtls.Config{
 		Certificates:            []tls.Certificate{*clientCert},
 		ExtendedMasterSecret:    dtls.RequireExtendedMasterSecret,
-		RootCAs:                 certPool,
 		CustomClientHelloRandom: func() [handshake.RandomBytesLength]byte { return clientHelloRandom },
 
 		// we verify the peer's cert using VerifyPeerCertificate, because go does not generate dertiministic

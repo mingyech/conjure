@@ -43,18 +43,6 @@ func getPrivkey(seed []byte) (*ecdsa.PrivateKey, error) {
 	return privkey, nil
 }
 
-// getPrivkey creates ECDSA private key used in DTLS Certificates
-func getPrivkeyGo(seed []byte) (*ecdsa.PrivateKey, error) {
-	randSource := hkdf.New(sha256.New, seed, nil, nil)
-
-	privkey, err := ecdsa.GenerateKey(elliptic.P256(), randSource)
-	if err != nil {
-		return &ecdsa.PrivateKey{}, err
-	}
-
-	return privkey, nil
-}
-
 // getX509Tpl creates x509 template for x509 Certificates generation used in DTLS Certificates.
 func getX509Tpl(seed []byte) (*x509.Certificate, error) {
 	randSource := hkdf.New(sha256.New, seed, nil, nil)
@@ -103,11 +91,6 @@ func newCertificate(seed []byte) (*tls.Certificate, error) {
 		return &tls.Certificate{}, err
 	}
 
-	privkey_go, err := getPrivkeyGo(seed)
-	if err != nil {
-		return &tls.Certificate{}, err
-	}
-
 	tpl, err := getX509Tpl(seed)
 	if err != nil {
 		return &tls.Certificate{}, err
@@ -122,21 +105,20 @@ func newCertificate(seed []byte) (*tls.Certificate, error) {
 
 	return &tls.Certificate{
 		Certificate: [][]byte{certDER},
-		PrivateKey:  privkey_go,
+		PrivateKey:  privkey,
 	}, nil
 }
 
 func certsFromSeed(seed []byte) (*tls.Certificate, *tls.Certificate, error) {
 	clientCert, err := newCertificate(seed)
 	if err != nil {
-		fmt.Printf("error generate cert: %v", err)
 		return &tls.Certificate{}, &tls.Certificate{}, fmt.Errorf("error generate cert: %v", err)
 	}
 
-	serverCert, err := newCertificate(seed)
-	if err != nil {
-		return &tls.Certificate{}, &tls.Certificate{}, fmt.Errorf("error generate cert: %v", err)
-	}
+	// serverCert, err := newCertificate(seed)
+	// if err != nil {
+	// 	return &tls.Certificate{}, &tls.Certificate{}, fmt.Errorf("error generate cert: %v", err)
+	// }
 
-	return clientCert, serverCert, nil
+	return clientCert, clientCert, nil
 }

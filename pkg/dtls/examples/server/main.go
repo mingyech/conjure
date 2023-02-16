@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 
@@ -9,21 +10,22 @@ import (
 )
 
 func main() {
+	var port = flag.Int("port", 6666, "port to listen on")
+	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
 	// Prepare the IP to connect to
-	addr := &net.UDPAddr{Port: 4444}
-
-	fmt.Println("Listening")
+	addr := &net.UDPAddr{Port: *port}
 
 	listener, err := dtls.Listen(addr)
-
 	if err != nil {
 		fmt.Printf("error creating dtls listner: %v\n", err)
 	}
 
+	fmt.Println("Listening")
+
 	// Simulate a chat session
 	hub := util.NewHub()
 
-	sharedSecret := []byte(`1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef`)
+	sharedSecret := []byte(*secret)
 	go func() {
 		for {
 			// Wait for a connection.
