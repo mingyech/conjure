@@ -36,7 +36,7 @@ func clientHelloRandomFromSeed(seed []byte) ([handshake.RandomBytesLength]byte, 
 func getPrivkey(seed []byte) (*ecdsa.PrivateKey, error) {
 	randSource := hkdf.New(sha256.New, seed, nil, nil)
 
-	privkey, err := ecdsa.GenerateKey(elliptic.P256(), randSource)
+	privkey, err := ecdsa.GenerateKey(elliptic.P256(), &Not1Reader{r: randSource})
 	if err != nil {
 		return &ecdsa.PrivateKey{}, err
 	}
