@@ -181,40 +181,6 @@ func (regManager *RegistrationManager) GetConnectingTransports() map[pb.Transpor
 	return m
 }
 
-// NewRegistration creates a new registration from details provided. Adds the registration
-// to tracking map, But marks it as not valid.
-func (regManager *RegistrationManager) NewRegistration(c2s *pb.ClientToStation, conjureKeys *ConjureSharedKeys, includeV6 bool, registrationSource *pb.RegistrationSource) (*DecoyRegistration, error) {
-	gen := uint(c2s.GetDecoyListGeneration())
-	clientLibVer := uint(c2s.GetClientLibVersion())
-	phantomAddr, err := regManager.PhantomSelector.Select(
-		conjureKeys.DarkDecoySeed, gen, clientLibVer, includeV6)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed phantom select: gen %d libv %d v6 %t err: %v",
-			gen,
-			clientLibVer,
-			includeV6,
-			err)
-	}
-
-	// UDP-TODO: UDP Transport may need payload sent from client to be copied to registration.
-	reg := DecoyRegistration{
-		DarkDecoy:          phantomAddr,
-		Keys:               conjureKeys,
-		Covert:             c2s.GetCovertAddress(),
-		Mask:               c2s.GetMaskedDecoyServerName(),
-		Flags:              c2s.Flags,
-		Transport:          c2s.GetTransport(),
-		DecoyListVersion:   c2s.GetDecoyListGeneration(),
-		RegistrationTime:   time.Now(),
-		RegistrationSource: registrationSource,
-		regCount:           0,
-		clientLibVer:       c2s.GetClientLibVersion(),
-	}
-
-	return &reg, nil
-}
-
 var errIncompleteReg = errors.New("incomplete registration")
 var errTransportNotEnabled = errors.New("transport not enabled, or unknown")
 var errBlocklistedPhantom = errors.New("blocklisted phantom - reg not serviceable")
