@@ -33,8 +33,8 @@ func (t Transport) GetIdentifier(reg *dd.DecoyRegistration) string {
 	return string(reg.Keys.ConjureHMAC("dtlsTrasportHMACString"))
 }
 
-// NewDTLSTransport creates a new dtls transport
-func NewDTLSTransport() (*Transport, error) {
+// NewTransport creates a new dtls transport
+func NewTransport() (*Transport, error) {
 	addr := &net.UDPAddr{Port: port}
 
 	listener, err := dtls.Listen(addr)
@@ -49,6 +49,7 @@ func NewDTLSTransport() (*Transport, error) {
 
 // Connect takes a registraion and returns a dtls Conn connected to the client
 func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net.Conn, error) {
+	fmt.Printf("[DTLS] connecting %+v\n", reg)
 	if reg.Transport != pb.TransportType_DTLS {
 		return nil, transports.ErrNotTransport
 	}

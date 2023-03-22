@@ -25,7 +25,6 @@ var logClientIP = false
 var enabledTransports = map[pb.TransportType]cj.Transport{
 	pb.TransportType_Min:   min.Transport{},
 	pb.TransportType_Obfs4: obfs4.Transport{},
-	pb.TransportType_DTLS:  dtls.Transport{},
 }
 
 func main() {
@@ -34,6 +33,12 @@ func main() {
 	var zmqAddress string
 	flag.StringVar(&zmqAddress, "zmq-address", "ipc://@zmq-proxy", "Address of ZMQ proxy")
 	flag.Parse()
+
+	dtlsTransport, err := dtls.NewTransport()
+	if err != nil {
+		log.Fatal("failed to setup dtls: %v", err)
+	}
+	enabledTransports[pb.TransportType_DTLS] = dtlsTransport
 
 	// Init stats
 	cj.Stat()
