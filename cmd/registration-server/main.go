@@ -13,6 +13,7 @@ import (
 	"github.com/BurntSushi/toml"
 	zmq "github.com/pebbe/zmq4"
 	"github.com/refraction-networking/conjure/application/lib"
+	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
 	"github.com/refraction-networking/conjure/pkg/apiregserver"
@@ -49,6 +50,7 @@ type config struct {
 var defaultTransports = map[pb.TransportType]lib.Transport{
 	pb.TransportType_Min:   min.Transport{},
 	pb.TransportType_Obfs4: obfs4.Transport{},
+	pb.TransportType_DTLS:  dtls.Transport{},
 	// [transports:enable]
 }
 

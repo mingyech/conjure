@@ -9,6 +9,7 @@ import (
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/dtls"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
+	"google.golang.org/protobuf/types/known/anypb"
 )
 
 const port int = 4444
@@ -48,7 +49,7 @@ func NewDTLSTransport() (*Transport, error) {
 
 // Connect takes a registraion and returns a dtls Conn connected to the client
 func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net.Conn, error) {
-	if reg.Transport != pb.TransportType_Dtls {
+	if reg.Transport != pb.TransportType_DTLS {
 		return nil, transports.ErrNotTransport
 	}
 
@@ -58,4 +59,16 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 	}
 
 	return conn, nil
+}
+
+func (t Transport) GetDstPort(libVersion uint, seed []byte, params any) (uint16, error) {
+	return uint16(port), nil
+}
+
+func (Transport) GetProto() pb.IPProto {
+	return pb.IPProto_Udp
+}
+
+func (Transport) ParseParams(libVersion uint, data *anypb.Any) (any, error) {
+	return nil, nil
 }
