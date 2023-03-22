@@ -13,6 +13,7 @@ import (
 
 	cj "github.com/refraction-networking/conjure/application/lib"
 	"github.com/refraction-networking/conjure/application/log"
+	"github.com/refraction-networking/conjure/application/transports/connecting/dtls"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/min"
 	"github.com/refraction-networking/conjure/application/transports/wrapping/obfs4"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
@@ -24,6 +25,7 @@ var logClientIP = false
 var enabledTransports = map[pb.TransportType]cj.Transport{
 	pb.TransportType_Min:   min.Transport{},
 	pb.TransportType_Obfs4: obfs4.Transport{},
+	pb.TransportType_DTLS:  dtls.Transport{},
 }
 
 func main() {
