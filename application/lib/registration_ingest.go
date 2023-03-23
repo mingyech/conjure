@@ -228,6 +228,7 @@ func (rm *RegistrationManager) ingestRegistration(reg *DecoyRegistration) {
 	logger.Debugf("Adding registration %v\n", reg.IDString())
 	Stat().AddReg(reg.DecoyListVersion, reg.RegistrationSource)
 	rm.AddRegStats(reg)
+	handleConnectingTpReg(rm, reg, logger)
 }
 
 func tryShareRegistrationOverAPI(reg *DecoyRegistration, apiEndpoint string, logger *log.Logger) {
@@ -458,4 +459,26 @@ func (rm *RegistrationManager) getPhantomDstPort(t pb.TransportType, params any,
 	// will attempt to reach. The libVersion is provided incase of version dependent changes in the
 	// transport selection algorithms themselves.
 	return transport.GetDstPort(libVer, seed, params)
+}
+
+// Handle new registration from client for UDP Transports
+// NOTE: this is called within a goroutine in get_zmq_updates
+func handleConnectingTpReg(regManager *RegistrationManager, reg *DecoyRegistration, logger *log.Logger) {
+	// using a Connecting Transport
+	for tptype, tp := range regManager.GetConnectingTransports() {
+		if tptype == reg.Transport { // correct transport name
+			ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
+			go func() {
+				defer cancelFunc()
+				conn, err := tp.Connect(ctx, reg)
+				if err != nil {
+					logger.Printf("error handling Connecting Transport Registration: %v\n", err)
+					return
+				}
+				Stat().AddConn()
+				Proxy(reg, conn, logger)
+				Stat().CloseConn()
+			}()
+		}
+	}
 }
