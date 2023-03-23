@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-const port int = 4444
+const port int = 443
 
 type Transport struct {
 	dtlsListener *dtls.Listener
