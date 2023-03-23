@@ -468,9 +468,9 @@ func handleConnectingTpReg(regManager *RegistrationManager, reg *DecoyRegistrati
 	for tptype, tp := range regManager.GetConnectingTransports() {
 		if tptype == reg.Transport { // correct transport name
 			ctx, cancelFunc := context.WithTimeout(context.Background(), 5*time.Second)
-			go func() {
+			go func(transport ConnectingTransport) {
 				defer cancelFunc()
-				conn, err := tp.Connect(ctx, reg)
+				conn, err := transport.Connect(ctx, reg)
 				if err != nil {
 					logger.Printf("error handling Connecting Transport Registration: %v\n", err)
 					return
@@ -478,7 +478,7 @@ func handleConnectingTpReg(regManager *RegistrationManager, reg *DecoyRegistrati
 				Stat().AddConn()
 				Proxy(reg, conn, logger)
 				Stat().CloseConn()
-			}()
+			}(tp)
 		}
 	}
 }
