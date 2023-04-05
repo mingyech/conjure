@@ -14,6 +14,7 @@ func main() {
 	var ip = flag.String("ip", "127.0.0.1", "ip to connect to")
 	var port = flag.Int("port", 6666, "port to connect to")
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
+	flag.Parse()
 	// Prepare the IP to connect to
 	addr := &net.UDPAddr{IP: net.ParseIP(*ip), Port: *port}
 

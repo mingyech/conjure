@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
-const port int = 443
+const port int = 41245
 
 type Transport struct {
 	dtlsListener *dtls.Listener
@@ -49,7 +49,6 @@ func NewTransport() (*Transport, error) {
 
 // Connect takes a registraion and returns a dtls Conn connected to the client
 func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net.Conn, error) {
-	fmt.Printf("[DTLS] connecting %+v\n", reg)
 	if reg.Transport != pb.TransportType_DTLS {
 		return nil, transports.ErrNotTransport
 	}

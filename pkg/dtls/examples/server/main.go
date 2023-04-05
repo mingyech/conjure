@@ -12,6 +12,8 @@ import (
 func main() {
 	var port = flag.Int("port", 6666, "port to listen on")
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
+	flag.Parse()
+
 	// Prepare the IP to connect to
 	addr := &net.UDPAddr{Port: *port}
 
