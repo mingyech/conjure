@@ -33,7 +33,7 @@ func (*ClientTransport) String() string {
 // ID provides an identifier that will be sent to the conjure station during the registration so
 // that the station knows what transport to expect connecting to the chosen phantom.
 func (*ClientTransport) ID() pb.TransportType {
-	return pb.TransportType_Min
+	return pb.TransportType_DTLS
 }
 
 // GetParams returns a generic protobuf with any parameters from both the registration and the
