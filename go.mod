@@ -43,3 +43,5 @@ require (
 )
 
 replace github.com/refraction-networking/gotapdance => github.com/mingyech/gotapdance v1.2.1-0.20230315194130-5765e75284b8
+
+replace gitlab.com/yawning/obfs4.git => github.com/jmwample/obfs4 v0.0.0-20230113193642-07b111e6b208
