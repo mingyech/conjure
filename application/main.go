@@ -36,7 +36,7 @@ func main() {
 
 	dtlsTransport, err := dtls.NewTransport()
 	if err != nil {
-		log.Fatal("failed to setup dtls: %v", err)
+		log.Fatalf("failed to setup dtls: %v", err)
 	}
 	enabledTransports[pb.TransportType_DTLS] = dtlsTransport
 
