@@ -1,6 +1,7 @@
 package dtls
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -98,6 +99,67 @@ func (l *Listener) getCertificateFromClientHello(clientHello *dtls.ClientHelloIn
 	return certs.serverCert, nil
 }
 
+func wrapSCTP(conn net.Conn) (net.Conn, error) {
+
+	// Start SCTP over DTLS connection
+	sctpConfig := sctp.Config{
+		NetConn:       conn,
+		LoggerFactory: logging.NewDefaultLoggerFactory(),
+	}
+
+	sctpServer, err := sctp.Server(sctpConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	sctpStream, err := sctpServer.AcceptStream()
+	if err != nil {
+		return nil, err
+	}
+	return &sctpConn{Stream: sctpStream, DTLSConn: conn}, nil
+
+}
+
+func ServerWithContext(ctx context.Context, conn net.Conn, sharedSecret []byte) (net.Conn, error) {
+
+	clientCert, serverCert, err := certsFromSeed(sharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("error generating certificatess from seed: %v", err)
+	}
+
+	VerifyPeerCertificate := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+
+		err := verifyCert(rawCerts[0], clientCert.Certificate[0])
+		if err != nil {
+			return fmt.Errorf("error verifying peer certificate: %v", err)
+		}
+
+		return nil
+	}
+
+	config := &dtls.Config{
+		ExtendedMasterSecret:  dtls.RequireExtendedMasterSecret,
+		ClientAuth:            dtls.RequireAnyClientCert,
+		Certificates:          []tls.Certificate{*serverCert},
+		VerifyPeerCertificate: VerifyPeerCertificate,
+	}
+
+	dtlsConn, err := dtls.ServerWithContext(ctx, conn, config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	sctpConn, err := wrapSCTP(dtlsConn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return sctpConn, nil
+
+}
+
 func (l *Listener) acceptLoop() {
 	for {
 		newConn, err := l.dtlsListener.Accept()
@@ -114,23 +176,10 @@ func (l *Listener) acceptLoop() {
 			connState := newDTLSConn.ConnectionState()
 			connID := connState.RemoteRandomBytes()
 
-			// Start SCTP over DTLS connection
-			sctpConfig := sctp.Config{
-				NetConn:       newDTLSConn,
-				LoggerFactory: logging.NewDefaultLoggerFactory(),
-			}
-
-			sctpServer, err := sctp.Server(sctpConfig)
+			sctpConn, err := wrapSCTP(newDTLSConn)
 			if err != nil {
 				return
 			}
-
-			sctpStream, err := sctpServer.AcceptStream()
-			if err != nil {
-				return
-			}
-
-			sctpConn := &sctpConn{Stream: sctpStream, DTLSConn: newDTLSConn}
 
 			l.connMapMutex.RLock()
 			defer l.connMapMutex.RUnlock()

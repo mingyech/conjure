@@ -4,14 +4,13 @@ import (
 	"net"
 	"time"
 
-	"github.com/mingyech/dtls/v2"
 	"github.com/pion/sctp"
 )
 
 // sctpConn implements the net.Conn interface using sctp stream and DTLS conn
 type sctpConn struct {
 	*sctp.Stream
-	DTLSConn *dtls.Conn
+	DTLSConn net.Conn
 }
 
 func (s *sctpConn) LocalAddr() net.Addr {
