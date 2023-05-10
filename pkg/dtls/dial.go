@@ -18,8 +18,17 @@ func Dial(remoteAddr *net.UDPAddr, secret []byte) (net.Conn, error) {
 	return DialWithContext(context.Background(), remoteAddr, secret)
 }
 
-// DialWithContext creates a DTLS connection to the given network address using the given shared secret
 func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
+	conn, err := net.DialUDP("udp", nil, remoteAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return ClientWithContext(ctx, conn, seed)
+}
+
+// DialWithContext creates a DTLS connection to the given network address using the given shared secret
+func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(seed)
 
 	if err != nil {
@@ -57,8 +66,8 @@ func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) 
 		VerifyPeerCertificate: verifyServerCertificate,
 	}
 
-	// Connect to a DTLS server
-	dtlsConn, err := dtls.DialWithContext(ctx, "udp", remoteAddr, config)
+	dtlsConn, err := dtls.ClientWithContext(ctx, conn, config)
+
 	if err != nil {
 		return nil, fmt.Errorf("error creating dtls connection: %v", err)
 	}
