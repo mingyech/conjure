@@ -1,31 +1,34 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
-	"os"
 
 	"github.com/mingyech/dtls/v2/examples/util"
 	"github.com/refraction-networking/conjure/pkg/dtls"
 )
 
 func main() {
-	var ip = flag.String("ip", "127.0.0.1", "ip to connect to")
-	var port = flag.Int("port", 6666, "port to connect to")
+	var remoteAddr = flag.String("saddr", "", "remote address")
+	var localAddr = flag.String("laddr", "", "source address")
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
 	flag.Parse()
 	// Prepare the IP to connect to
-	addr := &net.UDPAddr{IP: net.ParseIP(*ip), Port: *port}
+	laddr, err := net.ResolveUDPAddr("udp", *localAddr)
+	util.Check(err)
+
+	addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
+	util.Check(err)
 
 	sharedSecret := []byte(*secret)
 
-	dtlsConn, err := dtls.Dial(addr, sharedSecret)
+	udpConn, err := net.DialUDP("udp", laddr, addr)
+	util.Check(err)
 
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
+	util.Check(err)
 
 	fmt.Println("Connected; type 'exit' to shutdown gracefully")
 
