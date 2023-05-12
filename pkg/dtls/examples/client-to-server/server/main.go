@@ -10,14 +10,15 @@ import (
 )
 
 func main() {
-	var port = flag.Int("port", 6666, "port to listen on")
+	var localAddr = flag.String("laddr", "", "source address")
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
 	flag.Parse()
 
 	// Prepare the IP to connect to
-	addr := &net.UDPAddr{Port: *port}
+	laddr, err := net.ResolveUDPAddr("udp", *localAddr)
+	util.Check(err)
 
-	listener, err := dtls.Listen(addr)
+	listener, err := dtls.Listen(laddr)
 	if err != nil {
 		fmt.Printf("error creating dtls listner: %v\n", err)
 	}
