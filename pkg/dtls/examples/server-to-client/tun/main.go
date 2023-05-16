@@ -40,13 +40,11 @@ func OpenTun(tunName string) (*os.File, error) {
 }
 
 func main() {
-
-	// tun, err := os.Open("tun")
+	// tun, err := os.Open("tunfile")
 	// if err != nil {
 	// 	fmt.Println(err)
 	// 	return
 	// }
-
 	tun, err := OpenTun("tun1")
 	if err != nil {
 		fmt.Println(err)
@@ -58,22 +56,29 @@ func main() {
 	sport := 6789
 
 	ipLayer := &layers.IPv4{
-		SrcIP: net.ParseIP(src),
-		DstIP: net.ParseIP(dst),
+		SrcIP:    net.ParseIP(src),
+		DstIP:    net.ParseIP(dst),
+		Protocol: layers.IPProtocolUDP,
 	}
 
 	udpLayer := &layers.UDP{
 		SrcPort: layers.UDPPort(sport),
 		DstPort: layers.UDPPort(443),
 	}
+	err = udpLayer.SetNetworkLayerForChecksum(ipLayer)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	payload := []byte("Hello world")
 
 	buffer := gopacket.NewSerializeBuffer()
-	gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{
+	opts := gopacket.SerializeOptions{
 		ComputeChecksums: true,
 		FixLengths:       true,
-	},
+	}
+	gopacket.SerializeLayers(buffer, opts,
 		ipLayer,
 		udpLayer,
 		gopacket.Payload(payload),
@@ -90,7 +95,7 @@ func main() {
 	payload = []byte("Hi again")
 
 	buffer = gopacket.NewSerializeBuffer()
-	gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{},
+	gopacket.SerializeLayers(buffer, opts,
 		ipLayer,
 		udpLayer,
 		gopacket.Payload(payload),
