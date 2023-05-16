@@ -16,9 +16,10 @@ def openTun(tunName):
 sport = 6789
 src = '1.2.3.5'
 dst = '5.6.7.9'
-tun = openTun(b"tun1")
+# tun = openTun(b"tun1")
 #pkt = IP(src='1.2.3.4', dst='5.6.7.8') / TCP(sport=1234, dport=443) / Raw(b'Hello world')
 pkt = IP(src=src, dst=dst) / UDP(sport=sport, dport=443) / Raw(b'Hello world')
+print(list(bytes(pkt)))
 tun.write(bytes(pkt))
 
 print('Wrote pkt')
