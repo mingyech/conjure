@@ -79,7 +79,7 @@ func main() {
 	pkt := buffer.Bytes()
 	tun.Write(pkt)
 
-	fmt.Println("Wrote pkt")
+	fmt.Printf("Wrote pkt: %v\n", pkt)
 	resp := make([]byte, 1024)
 	tun.Read(resp)
 	fmt.Println(resp)
