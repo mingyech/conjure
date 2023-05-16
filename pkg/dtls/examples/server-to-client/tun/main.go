@@ -70,7 +70,10 @@ func main() {
 	payload := []byte("Hello world")
 
 	buffer := gopacket.NewSerializeBuffer()
-	gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{},
+	gopacket.SerializeLayers(buffer, gopacket.SerializeOptions{
+		ComputeChecksums: true,
+		FixLengths:       true,
+	},
 		ipLayer,
 		udpLayer,
 		gopacket.Payload(payload),
