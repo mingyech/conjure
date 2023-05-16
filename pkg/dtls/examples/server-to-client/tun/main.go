@@ -40,6 +40,13 @@ func OpenTun(tunName string) (*os.File, error) {
 }
 
 func main() {
+
+	// tun, err := os.Open("tun")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+
 	tun, err := OpenTun("tun1")
 	if err != nil {
 		fmt.Println(err)
