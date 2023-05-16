@@ -56,6 +56,9 @@ func main() {
 	sport := 6789
 
 	ipLayer := &layers.IPv4{
+		Version:  4,
+		IHL:      5,
+		TTL:      64,
 		SrcIP:    net.ParseIP(src),
 		DstIP:    net.ParseIP(dst),
 		Protocol: layers.IPProtocolUDP,
@@ -85,7 +88,7 @@ func main() {
 	)
 
 	pkt := buffer.Bytes()
-	pkt = []byte{69, 0, 0, 39, 0, 1, 0, 0, 64, 17, 106, 176, 1, 2, 3, 5, 5, 6, 7, 9, 26, 133, 1, 187, 0, 19, 97, 164, 72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100}
+	// pkt = []byte{69, 0, 0, 39, 0, 1, 0, 0, 64, 17, 106, 176, 1, 2, 3, 5, 5, 6, 7, 9, 26, 133, 1, 187, 0, 19, 97, 164, 72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100}
 	tun.Write(pkt)
 
 	fmt.Printf("Wrote pkt: %v\n", pkt)
