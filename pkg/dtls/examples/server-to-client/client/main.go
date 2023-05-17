@@ -5,12 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"sync"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/libp2p/go-reuseport"
 	"github.com/mingyech/dtls/v2/examples/util"
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/dtls"
+	pb "github.com/refraction-networking/gotapdance/protobuf"
+	"google.golang.org/protobuf/proto"
 )
+
+const DETECTOR_REG_CHANNEL string = "dark_decoy_map"
 
 func main() {
 	var remoteAddr = flag.String("raddr", "", "remote address")
@@ -31,6 +37,12 @@ func main() {
 	dnat, err := transports.NewDNAT("tun0")
 	util.Check(err)
 
+	client := getRedisClient()
+	if client == nil {
+		fmt.Printf("couldn't connect to redis")
+		return
+	}
+
 	go func() {
 		fmt.Println("connecting client 1")
 		addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
@@ -40,6 +52,21 @@ func main() {
 		util.Check(err)
 
 		dnat.AddEntry(addr.IP, uint16(addr.Port), paddr.IP, uint16(paddr.Port))
+
+		msg := &pb.StationToDetector{
+			PhantomIp: proto.String(paddr.IP.String()),
+			ClientIp:  proto.String(addr.IP.String()),
+			DstPort:   proto.Uint32(uint32(paddr.Port)),
+			SrcPort:   proto.Uint32(uint32(addr.Port)),
+			Proto:     pb.IPProto_Udp.Enum(),
+			TimeoutNs: proto.Uint64(60),
+			Operation: pb.StationOperations_New.Enum(),
+		}
+
+		s2d, err := proto.Marshal(msg)
+		util.Check(err)
+
+		client.Publish(context.Background(), DETECTOR_REG_CHANNEL, string(s2d))
 
 		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
 		util.Check(err)
@@ -63,6 +90,21 @@ func main() {
 
 		dnat.AddEntry(addr.IP, uint16(addr.Port), paddr.IP, uint16(paddr.Port))
 
+		msg := &pb.StationToDetector{
+			PhantomIp: proto.String(paddr.IP.String()),
+			ClientIp:  proto.String(addr.IP.String()),
+			DstPort:   proto.Uint32(uint32(paddr.Port)),
+			SrcPort:   proto.Uint32(uint32(addr.Port)),
+			Proto:     pb.IPProto_Udp.Enum(),
+			TimeoutNs: proto.Uint64(60),
+			Operation: pb.StationOperations_New.Enum(),
+		}
+
+		s2d, err := proto.Marshal(msg)
+		util.Check(err)
+
+		client.Publish(context.Background(), DETECTOR_REG_CHANNEL, string(s2d))
+
 		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr2)
 		util.Check(err)
 
@@ -77,4 +119,29 @@ func main() {
 
 	hub.Chat()
 
+}
+
+var client *redis.Client
+var once sync.Once
+
+// Redis client is already multiplexed and long lived. It is threadsafe so it
+// should be able to be accessed by multiple registration threads concurrently
+// with no issues. PoolSize is tunable in case this ends up being an issue.
+func getRedisClient() *redis.Client {
+	once.Do(initRedisClient)
+	return client
+}
+
+func initRedisClient() {
+	client = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+		PoolSize: 100,
+	})
+
+	ctx := context.Background()
+	// Ping to test redis connection
+	_, err := client.Ping(ctx).Result()
+	util.Check(err)
 }
