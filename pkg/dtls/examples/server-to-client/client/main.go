@@ -14,36 +14,65 @@ import (
 
 func main() {
 	var remoteAddr = flag.String("raddr", "", "remote address")
+	var remoteAddr2 = flag.String("raddr2", "", "remote address 2")
 	var localAddr = flag.String("laddr", "", "source address")
 	var phantomAddr = flag.String("paddr", "", "phantom address")
+	var phantomAddr2 = flag.String("paddr2", "", "phantom address 2")
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
 	flag.Parse()
 	// Prepare the IP to connect to
 	// laddr, err := net.ResolveUDPAddr("udp", *localAddr)
 	// util.Check(err)
 
-	addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
-	util.Check(err)
+	hub := util.NewHub()
 
-	paddr, err := net.ResolveUDPAddr("udp", *phantomAddr)
-	util.Check(err)
+	sharedSecret := []byte(*secret)
 
 	dnat, err := transports.NewDNAT("tun0")
 	util.Check(err)
 
-	dnat.AddEntry(addr.IP, uint16(addr.Port), paddr.IP, uint16(paddr.Port))
+	go func() {
+		addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
+		util.Check(err)
 
-	sharedSecret := []byte(*secret)
+		paddr, err := net.ResolveUDPAddr("udp", *phantomAddr)
+		util.Check(err)
 
-	udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
-	util.Check(err)
+		dnat.AddEntry(addr.IP, uint16(addr.Port), paddr.IP, uint16(paddr.Port))
 
-	dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
-	util.Check(err)
+		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
+		util.Check(err)
 
-	fmt.Println("Connected; type 'exit' to shutdown gracefully")
+		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
+		util.Check(err)
 
-	// Simulate a chat session
-	util.Chat(dtlsConn)
+		fmt.Println("new connection")
+
+		hub.Register(dtlsConn)
+
+	}()
+
+	go func() {
+		addr, err := net.ResolveUDPAddr("udp", *remoteAddr2)
+		util.Check(err)
+
+		paddr, err := net.ResolveUDPAddr("udp", *phantomAddr2)
+		util.Check(err)
+
+		dnat.AddEntry(addr.IP, uint16(addr.Port), paddr.IP, uint16(paddr.Port))
+
+		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
+		util.Check(err)
+
+		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
+		util.Check(err)
+
+		fmt.Println("new connection")
+
+		hub.Register(dtlsConn)
+
+	}()
+
+	hub.Chat()
 
 }
