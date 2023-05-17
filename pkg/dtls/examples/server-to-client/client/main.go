@@ -63,7 +63,7 @@ func main() {
 
 		dnat.AddEntry(addr.IP, uint16(addr.Port), paddr.IP, uint16(paddr.Port))
 
-		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
+		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr2)
 		util.Check(err)
 
 		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
