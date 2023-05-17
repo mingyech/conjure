@@ -32,6 +32,7 @@ func main() {
 	util.Check(err)
 
 	go func() {
+		fmt.Println("connecting client 1")
 		addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
 		util.Check(err)
 
@@ -53,6 +54,7 @@ func main() {
 	}()
 
 	go func() {
+		fmt.Println("connecting client 2")
 		addr, err := net.ResolveUDPAddr("udp", *remoteAddr2)
 		util.Check(err)
 
