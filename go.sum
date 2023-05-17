@@ -82,6 +82,8 @@ github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfn
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/libp2p/go-reuseport v0.3.0 h1:iiZslO5byUYZEg9iCwJGf5h+sf1Agmqx2V2FDjPyvUw=
+github.com/libp2p/go-reuseport v0.3.0/go.mod h1:laea40AimhtfEqysZ71UpYj4S+R9VpH8PgqLo7L+SwI=
 github.com/mingyech/dtls/v2 v2.0.0-20221227014520-4beb8468ab6e h1:n1spkE+2vdkDN7Im4G2c/7uxj/33g/ZtVZWIQCX55Rk=
 github.com/mingyech/dtls/v2 v2.0.0-20221227014520-4beb8468ab6e/go.mod h1:6r4mcg/L1X3JIfCfXvVP8us4XLgSNeYrFS3QajAgPu0=
 github.com/mingyech/gotapdance v1.2.1-0.20230315194130-5765e75284b8 h1:/uFBm5eODQfMq1L40kxeWDxWgMB0iZ+B/JapHR5qdMY=

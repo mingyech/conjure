@@ -33,6 +33,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/google/gopacket v1.1.19
+	github.com/libp2p/go-reuseport v0.3.0
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/transport v0.14.1 // indirect

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/libp2p/go-reuseport"
 	"github.com/mingyech/dtls/v2/examples/util"
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/dtls"
@@ -18,8 +19,8 @@ func main() {
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
 	flag.Parse()
 	// Prepare the IP to connect to
-	laddr, err := net.ResolveUDPAddr("udp", *localAddr)
-	util.Check(err)
+	// laddr, err := net.ResolveUDPAddr("udp", *localAddr)
+	// util.Check(err)
 
 	addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
 	util.Check(err)
@@ -34,7 +35,7 @@ func main() {
 
 	sharedSecret := []byte(*secret)
 
-	udpConn, err := net.DialUDP("udp", laddr, addr)
+	udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
 	util.Check(err)
 
 	dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
