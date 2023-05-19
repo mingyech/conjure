@@ -43,6 +43,14 @@ func main() {
 		return
 	}
 
+	laddr, err := net.ResolveUDPAddr("udp", *localAddr)
+	util.Check(err)
+
+	listener, err := dtls.Listen(laddr)
+	util.Check(err)
+
+	fmt.Println("Listening")
+
 	go func() {
 		fmt.Println("connecting client 1")
 		addr, err := net.ResolveUDPAddr("udp", *remoteAddr)
@@ -115,6 +123,24 @@ func main() {
 
 		hub.Register(dtlsConn)
 
+	}()
+
+	go func() {
+		for {
+			// Wait for a connection.
+			conn, err := listener.AcceptFromSecret(sharedSecret)
+			util.Check(err)
+
+			fmt.Println("new connection")
+			// defer conn.Close() // TODO: graceful shutdown
+
+			// `conn` is of type `net.Conn` but may be casted to `dtls.Conn`
+			// using `dtlsConn := conn.(*dtls.Conn)` in order to to expose
+			// functions like `ConnectionState` etc.
+
+			// Register the connection with the chat hub
+			hub.Register(conn)
+		}
 	}()
 
 	hub.Chat()
