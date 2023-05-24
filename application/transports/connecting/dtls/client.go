@@ -43,8 +43,7 @@ func (t *ClientTransport) GetParams() proto.Message {
 // SetParams allows the caller to set parameters associated with the transport, returning an
 // error if the provided generic message is not compatible.
 func (t *ClientTransport) SetParams(p any) error {
-	// params, ok := p.(*pb.DTLSTransportParams)
-	t.Parameters.SrcPort = proto.Uint32(6666)
+	t.Parameters = &pb.DTLSTransportParams{SrcPort: proto.Uint32(6666)}
 	return nil
 }
 
