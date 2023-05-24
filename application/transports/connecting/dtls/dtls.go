@@ -79,17 +79,17 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 	return dtlsConn, nil
 }
 
-func (Transport) GetDstPort(libVersion uint, seed []byte, params any) (uint16, error) {
-	parameters, ok := params.(*pb.GenericTransportParams)
+func (Transport) GetSrcPort(libVersion uint, seed []byte, params any) (uint16, error) {
+	parameters, ok := params.(*pb.DTLSTransportParams)
 	if !ok {
 		return 0, fmt.Errorf("bad parameters provided")
 	}
 
-	if parameters.GetRandomizeDstPort() {
-		return transports.PortSelectorRange(portRangeMin, portRangeMax, seed)
-	}
+	return uint16(parameters.GetSrcPort()), nil
+}
 
-	return defaultPort, nil
+func (Transport) GetDstPort(libVersion uint, seed []byte, params any) (uint16, error) {
+	return transports.PortSelectorRange(portRangeMin, portRangeMax, seed)
 }
 
 func (Transport) GetProto() pb.IPProto {
@@ -97,7 +97,7 @@ func (Transport) GetProto() pb.IPProto {
 }
 
 func (Transport) ParseParams(libVersion uint, data *anypb.Any) (any, error) {
-	var m = &pb.GenericTransportParams{}
+	var m = &pb.DTLSTransportParams{}
 	err := transports.UnmarshalAnypbTo(data, m)
 	return m, err
 }
