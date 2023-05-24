@@ -1,8 +1,6 @@
 package dtls
 
 import (
-	"fmt"
-
 	"github.com/refraction-networking/conjure/application/transports"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -13,7 +11,7 @@ import (
 // the station side Transport struct has one instance to be re-used for all sessions.
 type ClientTransport struct {
 	// Parameters are fields that will be shared with the station in the registration
-	Parameters *pb.GenericTransportParams
+	Parameters *pb.DTLSTransportParams
 
 	// // state tracks fields internal to the registrar that survive for the lifetime
 	// // of the transport session without being shared - i.e. local derived keys.
@@ -45,20 +43,12 @@ func (t *ClientTransport) GetParams() proto.Message {
 // SetParams allows the caller to set parameters associated with the transport, returning an
 // error if the provided generic message is not compatible.
 func (t *ClientTransport) SetParams(p any) error {
-	params, ok := p.(*pb.GenericTransportParams)
-	if !ok {
-		return fmt.Errorf("unable to parse params")
-	}
-	t.Parameters = params
-
+	// params, ok := p.(*pb.DTLSTransportParams)
+	t.Parameters.SrcPort = proto.Uint32(6666)
 	return nil
 }
 
 // GetDstPort returns the destination port that the client should open the phantom connection to
 func (t *ClientTransport) GetDstPort(seed []byte, params any) (uint16, error) {
-	if t.Parameters == nil || !t.Parameters.GetRandomizeDstPort() {
-		return defaultPort, nil
-	}
-
 	return transports.PortSelectorRange(portRangeMin, portRangeMax, seed)
 }
