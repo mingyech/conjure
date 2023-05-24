@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/libp2p/go-reuseport"
 	dd "github.com/refraction-networking/conjure/application/lib"
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/dtls"
@@ -22,7 +23,7 @@ const (
 const listenPort = 41245
 
 type Transport struct {
-	dtlsListener *dtls.Listener
+	dnat *transports.DNAT
 }
 
 // Name returns name of the transport
@@ -42,15 +43,14 @@ func (Transport) GetIdentifier(reg *dd.DecoyRegistration) string {
 
 // NewTransport creates a new dtls transport
 func NewTransport() (*Transport, error) {
-	addr := &net.UDPAddr{Port: listenPort}
+	dnat, err := transports.NewDNAT("tun4")
 
-	listener, err := dtls.Listen(addr)
 	if err != nil {
-		return nil, fmt.Errorf("error creating dtls listner: %v", err)
+		return nil, fmt.Errorf("error connecting to tun device for DNAT: %v", err)
 	}
 
 	return &Transport{
-		dtlsListener: listener,
+		dnat: dnat,
 	}, nil
 }
 
@@ -60,12 +60,23 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 		return nil, transports.ErrNotTransport
 	}
 
-	conn, err := t.dtlsListener.AcceptFromSecret(reg.Keys.SharedSecret)
+	clientAddr := net.UDPAddr{IP: net.ParseIP(reg.GetRegistrationAddress()), Port: int(reg.GetSrcPort())}
+
+	t.dnat.AddEntry(clientAddr.IP, uint16(clientAddr.Port), reg.PhantomIp, reg.PhantomPort)
+
+	laddr := net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: listenPort}
+
+	udpConn, err := reuseport.Dial("udp", laddr.String(), clientAddr.String())
 	if err != nil {
-		return nil, fmt.Errorf("error accepting dtls connection from secret: %v", err)
+		return nil, fmt.Errorf("error dialing client: %v", err)
 	}
 
-	return conn, nil
+	dtlsConn, err := dtls.ClientWithContext(ctx, udpConn, reg.Keys.SharedSecret)
+	if err != nil {
+		return nil, fmt.Errorf("error establishing dtls connection: %v", err)
+	}
+
+	return dtlsConn, nil
 }
 
 func (Transport) GetDstPort(libVersion uint, seed []byte, params any) (uint16, error) {

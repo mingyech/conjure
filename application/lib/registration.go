@@ -295,6 +295,7 @@ type DecoyRegistration struct {
 	DecoyListVersion   uint32
 	regCount           int32
 	clientLibVer       uint32
+	clientPort         uint16
 
 	tunnelCount int64
 
@@ -436,11 +437,9 @@ func (reg *DecoyRegistration) GetDstPort() uint16 {
 	return reg.PhantomPort
 }
 
-// GetSrcPort returns a source port if one was registered. Currently this is not
-// supported -- for now  this is intended as plumbing for potentially supporting
-// seeded source port selection for the client.
+// GetSrcPort returns a source port if one was registered.
 func (reg *DecoyRegistration) GetSrcPort() uint16 {
-	return 0
+	return reg.clientPort
 }
 
 type regStatus int
