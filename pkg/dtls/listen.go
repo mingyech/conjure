@@ -240,6 +240,12 @@ func verifyCert(cert, correct []byte) error {
 
 // AcceptFromSecret accepts a connection with shared secret
 func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
+	// Call the new function with a background context
+	return l.AcceptFromSecretWithContext(context.Background(), secret)
+}
+
+// AcceptFromSecretWithContext accepts a connection with shared secret, with a context
+func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, secret []byte) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(secret)
 	if err != nil {
 		return &dtls.Conn{}, fmt.Errorf("error generating certificatess from seed: %v", err)
@@ -259,9 +265,13 @@ func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
 	}
 	defer l.removeChannel(connID)
 
-	conn := <-connChan
-
-	return conn, nil
+	// Adding context-aware select statement for cancellation
+	select {
+	case conn := <-connChan:
+		return conn, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (l *Listener) registerCert(connID [handshake.RandomBytesLength]byte, clientCert, serverCert *tls.Certificate) {
