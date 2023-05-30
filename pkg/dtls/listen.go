@@ -9,7 +9,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/libp2p/go-reuseport"
 	"github.com/mingyech/dtls/v2"
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
 	"github.com/pion/logging"
@@ -54,12 +53,7 @@ func Listen(addr *net.UDPAddr) (*Listener, error) {
 		VerifyConnection:     newDTLSListner.verifyConnection,
 	}
 
-	lc, err := reuseport.Listen("udp", addr.String())
-	if err != nil {
-		return nil, fmt.Errorf("error listening to udp: %v", err)
-	}
-
-	listener, err := dtls.NewListener(lc, config)
+	listener, err := dtls.Listen("udp", addr, config)
 	if err != nil {
 		return &Listener{}, fmt.Errorf("error listening to dtls: %v", err)
 	}
