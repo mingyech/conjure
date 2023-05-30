@@ -79,8 +79,12 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 
 	udpConn, err := reuseport.Dial("udp", laddr.String(), clientAddr.String())
 	if err != nil {
-		log.Debugf("error dialing udp client: %v\n", err)
-		return nil, fmt.Errorf("error dialing client: %v", err)
+		log.Debugf("error dialing dtls client: %v, fallback to listen\n", err)
+		conn, err := t.dtlsListener.AcceptFromSecret(reg.Keys.SharedSecret)
+		if err != nil {
+			return nil, fmt.Errorf("error accepting dtls connection from secret: %v", err)
+		}
+		return conn, nil
 	}
 
 	ctxtimeout, cancel := context.WithTimeout(context.Background(), 7*time.Second)
