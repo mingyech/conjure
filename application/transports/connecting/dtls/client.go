@@ -1,6 +1,8 @@
 package dtls
 
 import (
+	"fmt"
+
 	"github.com/refraction-networking/conjure/application/transports"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	"google.golang.org/protobuf/proto"
@@ -43,7 +45,12 @@ func (t *ClientTransport) GetParams() proto.Message {
 // SetParams allows the caller to set parameters associated with the transport, returning an
 // error if the provided generic message is not compatible.
 func (t *ClientTransport) SetParams(p any) error {
-	t.Parameters = &pb.DTLSTransportParams{SrcPort: proto.Uint32(6666)}
+	params, ok := p.(*pb.DTLSTransportParams)
+	if !ok {
+		return fmt.Errorf("unable to parse params")
+	}
+	t.Parameters = params
+
 	return nil
 }
 
