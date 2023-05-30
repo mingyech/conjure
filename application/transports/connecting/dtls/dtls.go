@@ -79,7 +79,6 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 
 	udpConn, err := reuseport.Dial("udp", laddr.String(), clientAddr.String())
 	if err != nil {
-		log.Debugf("error dialing udp client: %v\n", err)
 		return nil, fmt.Errorf("error dialing client: %v", err)
 	}
 
