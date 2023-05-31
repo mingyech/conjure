@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"time"
 
 	"github.com/libp2p/go-reuseport"
 	dd "github.com/refraction-networking/conjure/application/lib"
@@ -66,8 +65,6 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 	t.dnat.AddEntry(clientAddr.IP, uint16(clientAddr.Port), reg.PhantomIp, reg.PhantomPort)
 
 	laddr := net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: listenPort}
-
-	time.Sleep(5 * time.Second)
 
 	udpConn, err := reuseport.Dial("udp", laddr.String(), clientAddr.String())
 	if err != nil {
