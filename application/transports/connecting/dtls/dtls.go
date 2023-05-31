@@ -71,7 +71,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 		return nil, fmt.Errorf("error dialing client: %v", err)
 	}
 
-	dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, reg.Keys.SharedSecret)
+	dtlsConn, err := dtls.ClientWithContext(ctx, udpConn, reg.Keys.SharedSecret)
 	if err != nil {
 		return nil, fmt.Errorf("error establishing dtls connection: %v", err)
 	}
