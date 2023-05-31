@@ -14,6 +14,7 @@ const defaultSTUNServer = "stun.voip.blackberry.com:3478"
 func main() {
 	// var localAddr = flag.String("laddr", "", "source address")
 	var secret = flag.String("secret", "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", "shared secret")
+	var remoteAddr = flag.String("raddr", "192.122.190.54:21352", "remote (phantom) address")
 	var stunServer = flag.String("stun-server", defaultSTUNServer, "STUN server for NAT traversal.")
 	flag.Parse()
 
@@ -21,7 +22,13 @@ func main() {
 	util.Check(err)
 	fmt.Printf("Public Port: %v, Private port: %v\n", pubPort, privPort)
 
-	listener, err := dtls.Listen(&net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort})
+	laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: privPort}
+	raddr, err := net.ResolveUDPAddr("udp", *remoteAddr)
+	util.Check(err)
+
+	openUDP(laddr, raddr)
+
+	listener, err := dtls.Listen(laddr)
 	if err != nil {
 		fmt.Printf("error creating dtls listner: %v\n", err)
 	}
