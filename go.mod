@@ -18,14 +18,19 @@ require (
 	github.com/pion/sctp v1.8.5
 	github.com/refraction-networking/gotapdance v1.3.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.3
 	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf
-	golang.org/x/crypto v0.5.0
+	golang.org/x/crypto v0.8.0
 	google.golang.org/grpc v1.41.0
 	google.golang.org/protobuf v1.28.1
 )
 
 require github.com/oschwald/geoip2-golang v1.8.0
+
+require (
+	github.com/pion/dtls/v2 v2.2.7 // indirect
+	github.com/pion/transport/v2 v2.2.1 // indirect
+)
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -36,11 +41,12 @@ require (
 	github.com/libp2p/go-reuseport v0.3.0
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/stun v0.6.0
 	github.com/pion/transport v0.14.1 // indirect
 	github.com/pion/udp v0.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gitlab.com/yawning/edwards25519-extra.git v0.0.0-20211229043746-2f91fcc9fbdb // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.7.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
