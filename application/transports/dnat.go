@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"syscall"
 	"unsafe"
 
@@ -27,8 +28,20 @@ func NewDNAT() (*DNAT, error) {
 
 	var ifreq [0x28]byte
 
-	coreCount := os.Getenv("CJ_CORECOUNT")
-	copy(ifreq[:], "tun"+coreCount)
+	coreCountStr := os.Getenv("CJ_CORECOUNT")
+	coreCount, err := strconv.Atoi(coreCountStr)
+	if err != nil {
+
+		return nil, fmt.Errorf("Error parsing core count: %v", err)
+	}
+
+	offsetStr := os.Getenv("OFFSET")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil {
+		return nil, fmt.Errorf("Error parsing offset: %v", err)
+	}
+
+	copy(ifreq[:], "tun"+strconv.Itoa(offset+coreCount))
 
 	flags := IFF_TUN | IFF_NO_PI
 	binary.LittleEndian.PutUint16(ifreq[0x10:], uint16(flags))
