@@ -1,7 +1,9 @@
 package transports
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"net"
 	"os"
 	"syscall"
@@ -34,6 +36,11 @@ func NewDNAT() (*DNAT, error) {
 		tun.Close()
 		return nil, errno
 	}
+
+	// Get the interface name
+	name := string(ifreq[:bytes.IndexByte(ifreq[:], 0)])
+
+	fmt.Println("Interface Name:", name)
 
 	return &DNAT{
 		tun: tun,
