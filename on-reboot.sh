@@ -23,7 +23,7 @@ exit_msg() {
 echo "Setting up devices tun{${OFFSET}..$((OFFSET + CORE_COUNT -1 ))}, adding rules for them, and turning off RP filters."
 do_or_die "sysctl -w net.ipv4.conf.all.rp_filter=0"
 # Or maybe just set up for all of them instead?
-for CORE in `seq $OFFSET $((OFFSET + CORE_COUNT -1 ))`
+for CORE in `seq $OFFSET $((OFFSET + CORE_COUNT -1 +1 ))`
 do
     # echo "setting up tun${CORE} ${IP4_ADDR}, ${IP6_ADDR}"
     ip tuntap del mode tun tun${CORE}
