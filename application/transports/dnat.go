@@ -24,7 +24,7 @@ func NewDNAT() (*DNAT, error) {
 	}
 
 	var ifreq [0x28]byte
-	// copy(ifreq[:], tunName)
+	copy(ifreq[:], "tun")
 
 	flags := IFF_TUN | IFF_NO_PI
 	binary.LittleEndian.PutUint16(ifreq[0x10:], uint16(flags))
