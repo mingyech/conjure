@@ -34,7 +34,7 @@ func main() {
 
 	sharedSecret := []byte(*secret)
 
-	dnat, err := transports.NewDNAT("tun4")
+	dnat, err := transports.NewDNAT()
 	util.Check(err)
 
 	client := getRedisClient()

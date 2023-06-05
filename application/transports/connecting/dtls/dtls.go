@@ -43,7 +43,7 @@ func (Transport) GetIdentifier(reg *dd.DecoyRegistration) string {
 
 // NewTransport creates a new dtls transport
 func NewTransport() (*Transport, error) {
-	dnat, err := transports.NewDNAT("tun4")
+	dnat, err := transports.NewDNAT()
 
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to tun device for DNAT: %v", err)

@@ -1,17 +1,14 @@
 package transports
 
 import (
-	"encoding/binary"
 	"net"
 	"os"
-	"syscall"
-	"unsafe"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 )
 
-func NewDNAT(tunName string) (*DNAT, error) {
+func NewDNAT() (*DNAT, error) {
 	const (
 		IFF_TUN   = 0x0001
 		IFF_NO_PI = 0x1000
@@ -23,17 +20,17 @@ func NewDNAT(tunName string) (*DNAT, error) {
 		return nil, err
 	}
 
-	var ifreq [0x28]byte
-	copy(ifreq[:], tunName)
+	// var ifreq [0x28]byte
+	// copy(ifreq[:], tunName)
 
-	flags := IFF_TUN | IFF_NO_PI
-	binary.LittleEndian.PutUint16(ifreq[0x10:], uint16(flags))
+	// flags := IFF_TUN | IFF_NO_PI
+	// binary.LittleEndian.PutUint16(ifreq[0x10:], uint16(flags))
 
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(TUNSETIFF), uintptr(unsafe.Pointer(&ifreq[0])))
-	if errno != 0 {
-		tun.Close()
-		return nil, errno
-	}
+	// _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(TUNSETIFF), uintptr(unsafe.Pointer(&ifreq[0])))
+	// if errno != 0 {
+	// 	tun.Close()
+	// 	return nil, errno
+	// }
 
 	return &DNAT{
 		tun: tun,
