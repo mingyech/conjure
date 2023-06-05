@@ -167,8 +167,6 @@ func (l *Listener) acceptLoop() {
 			continue
 		}
 
-		fmt.Printf("accept from %v to %v", newConn.RemoteAddr(), newConn.LocalAddr())
-
 		go func() {
 			newDTLSConn, ok := newConn.(*dtls.Conn)
 			if !ok {
