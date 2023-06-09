@@ -32,13 +32,13 @@ func NewDNAT() (*DNAT, error) {
 	coreCount, err := strconv.Atoi(coreCountStr)
 	if err != nil {
 
-		return nil, fmt.Errorf("Error parsing core count: %v", err)
+		return nil, fmt.Errorf("error parsing core count: %v", err)
 	}
 
 	offsetStr := os.Getenv("OFFSET")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		return nil, fmt.Errorf("Error parsing offset: %v", err)
+		return nil, fmt.Errorf("error parsing offset: %v", err)
 	}
 
 	copy(ifreq[:], "tun"+strconv.Itoa(offset+coreCount))
@@ -75,7 +75,7 @@ func setUp(tun *os.File, name string) error {
 		SIOCGIFFLAGS = 0x8913 // Get interface flags
 		SIOCSIFFLAGS = 0x8914 // Set interface flags
 	)
-	var ifreq [0x28]byte
+	var ifreq [32]byte
 
 	// Populate the interface name
 	copy(ifreq[:], name)
