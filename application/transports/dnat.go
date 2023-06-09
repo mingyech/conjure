@@ -19,10 +19,6 @@ func NewDNAT() (*DNAT, error) {
 		IFF_TUN   = 0x0001
 		IFF_NO_PI = 0x1000
 		TUNSETIFF = 0x400454ca
-
-		SIOCGIFFLAGS = 0x8913 // Get interface flags
-		SIOCSIFFLAGS = 0x8914 // Set interface flags
-		IFF_UP       = 0x1    // Interface is up
 	)
 
 	tun, err := os.OpenFile("/dev/net/tun", os.O_RDWR, 0)
@@ -35,13 +31,14 @@ func NewDNAT() (*DNAT, error) {
 	coreCountStr := os.Getenv("CJ_CORECOUNT")
 	coreCount, err := strconv.Atoi(coreCountStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing core count: %v", err)
+
+		return nil, fmt.Errorf("Error parsing core count: %v", err)
 	}
 
 	offsetStr := os.Getenv("OFFSET")
 	offset, err := strconv.Atoi(offsetStr)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing offset: %v", err)
+		return nil, fmt.Errorf("Error parsing offset: %v", err)
 	}
 
 	copy(ifreq[:], "tun"+strconv.Itoa(offset+coreCount))
@@ -61,28 +58,45 @@ func NewDNAT() (*DNAT, error) {
 	fmt.Println("Interface Name:", name)
 
 	// Bring the interface up
-	// Get the current interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
-	if errno != 0 {
-		tun.Close()
-		return nil, errno
-	}
-
-	// Add the IFF_UP flag to bring the interface up
-	newFlags := binary.LittleEndian.Uint16(ifreq[0x10:])
-	newFlags |= IFF_UP
-	binary.LittleEndian.PutUint16(ifreq[0x10:], newFlags)
-
-	// Set the new interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
-	if errno != 0 {
-		tun.Close()
-		return nil, errno
+	err = setUp(tun)
+	if err != nil {
+		return nil, fmt.Errorf("error bring the interface up: %v", err)
 	}
 
 	return &DNAT{
 		tun: tun,
 	}, nil
+}
+
+// setUp enables a network interface represented by an os.File.
+func setUp(tun *os.File) error {
+	const (
+		IFF_UP       = 0x1    // Interface is up
+		SIOCGIFFLAGS = 0x8913 // Get interface flags
+		SIOCSIFFLAGS = 0x8914 // Set interface flags
+	)
+	var ifreq [0x28]byte
+
+	// Get the current interface flags
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	if errno != 0 {
+		tun.Close()
+		return fmt.Errorf("error getting interface flags: %v", errno)
+	}
+
+	// Add the IFF_UP flag to bring the interface up
+	flags := binary.LittleEndian.Uint16(ifreq[0x10:])
+	flags |= IFF_UP
+	binary.LittleEndian.PutUint16(ifreq[0x10:], flags)
+
+	// Set the new interface flags
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	if errno != 0 {
+		tun.Close()
+		return fmt.Errorf("error setting interface flags: %v", errno)
+	}
+
+	return nil
 }
 
 type DNAT struct {
