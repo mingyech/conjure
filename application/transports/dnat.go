@@ -62,19 +62,21 @@ func NewDNAT() (*DNAT, error) {
 
 	// Bring the interface up
 	// Get the current interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	var ifreq2 [0x28]byte
+	copy(ifreq2[:], "tun"+strconv.Itoa(offset+coreCount))
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq2[0])))
 	if errno != 0 {
 		tun.Close()
 		return nil, errno
 	}
 
 	// Add the IFF_UP flag to bring the interface up
-	newFlags := binary.LittleEndian.Uint16(ifreq[0x10:])
+	newFlags := binary.LittleEndian.Uint16(ifreq2[0x10:])
 	newFlags |= IFF_UP
-	binary.LittleEndian.PutUint16(ifreq[0x10:], newFlags)
+	binary.LittleEndian.PutUint16(ifreq2[0x10:], newFlags)
 
 	// Set the new interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq2[0])))
 	if errno != 0 {
 		tun.Close()
 		return nil, errno
