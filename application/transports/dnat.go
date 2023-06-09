@@ -58,7 +58,7 @@ func NewDNAT() (*DNAT, error) {
 	fmt.Println("Interface Name:", name)
 
 	// Bring the interface up
-	err = setUp(tun)
+	err = setUp(tun, name)
 	if err != nil {
 		return nil, fmt.Errorf("error bring the interface up: %v", err)
 	}
@@ -68,14 +68,17 @@ func NewDNAT() (*DNAT, error) {
 	}, nil
 }
 
-// setUp enables a network interface represented by an os.File.
-func setUp(tun *os.File) error {
+// setUp brings up a network interface represented by the given name.
+func setUp(tun *os.File, name string) error {
 	const (
 		IFF_UP       = 0x1    // Interface is up
 		SIOCGIFFLAGS = 0x8913 // Get interface flags
 		SIOCSIFFLAGS = 0x8914 // Set interface flags
 	)
 	var ifreq [0x28]byte
+
+	// Populate the interface name
+	copy(ifreq[:], name)
 
 	// Get the current interface flags
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
