@@ -60,7 +60,7 @@ func NewDNAT() (*DNAT, error) {
 	// Bring the interface up
 	err = setUp(tun)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error bring the interface up: %v", err)
 	}
 
 	return &DNAT{
@@ -81,7 +81,7 @@ func setUp(tun *os.File) error {
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
 	if errno != 0 {
 		tun.Close()
-		return errno
+		return fmt.Errorf("error getting interface flags: %v", errno)
 	}
 
 	// Add the IFF_UP flag to bring the interface up
@@ -93,7 +93,7 @@ func setUp(tun *os.File) error {
 	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
 	if errno != 0 {
 		tun.Close()
-		return errno
+		return fmt.Errorf("error setting interface flags: %v", errno)
 	}
 
 	return nil
