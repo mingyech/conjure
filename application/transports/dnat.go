@@ -57,9 +57,46 @@ func NewDNAT() (*DNAT, error) {
 
 	fmt.Println("Interface Name:", name)
 
+	// Bring the interface up
+	err = setUp(tun)
+	if err != nil {
+		return nil, err
+	}
+
 	return &DNAT{
 		tun: tun,
 	}, nil
+}
+
+// setUp enables a network interface represented by an os.File.
+func setUp(tun *os.File) error {
+	const (
+		IFF_UP       = 0x1    // Interface is up
+		SIOCGIFFLAGS = 0x8913 // Get interface flags
+		SIOCSIFFLAGS = 0x8914 // Set interface flags
+	)
+	var ifreq [0x28]byte
+
+	// Get the current interface flags
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	if errno != 0 {
+		tun.Close()
+		return errno
+	}
+
+	// Add the IFF_UP flag to bring the interface up
+	flags := binary.LittleEndian.Uint16(ifreq[0x10:])
+	flags |= IFF_UP
+	binary.LittleEndian.PutUint16(ifreq[0x10:], flags)
+
+	// Set the new interface flags
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	if errno != 0 {
+		tun.Close()
+		return errno
+	}
+
+	return nil
 }
 
 type DNAT struct {
