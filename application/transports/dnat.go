@@ -70,7 +70,7 @@ func NewDNAT() (*DNAT, error) {
 
 // setUp brings up a network interface represented by the given name.
 func setUp(tun *os.File, name string) error {
-	var ifreq [0x28]byte
+	ifreq := make([]byte, 0x28)
 
 	// Populate the interface name
 	copy(ifreq[:], name)
