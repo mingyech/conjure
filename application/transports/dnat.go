@@ -78,7 +78,7 @@ func setUp(tun *os.File, name string) error {
 		return fmt.Errorf("error creating ifreq: %v", err)
 	}
 
-	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_RAW, unix.IPPROTO_IP)
+	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_DGRAM, unix.IPPROTO_IP)
 	if err != nil {
 		return fmt.Errorf("error creating socket: %v", err)
 	}
