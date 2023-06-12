@@ -10,7 +10,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v0.6.0
-	github.com/mingyech/dtls/v2 v2.0.0-20221227014520-4beb8468ab6e
+	github.com/mingyech/dtls/v2 v2.0.0-20230612190757-83e8b803b495
 	github.com/mroth/weightedrand v1.0.0
 	github.com/pebbe/zmq4 v1.2.9
 	github.com/pelletier/go-toml v1.9.5
@@ -18,7 +18,7 @@ require (
 	github.com/pion/sctp v1.8.5
 	github.com/refraction-networking/gotapdance v1.3.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf
 	golang.org/x/crypto v0.8.0
 	google.golang.org/grpc v1.41.0
@@ -42,11 +42,9 @@ require (
 	github.com/oschwald/maxminddb-golang v1.10.0 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/stun v0.6.0
-	github.com/pion/transport v0.14.1 // indirect
-	github.com/pion/udp v0.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gitlab.com/yawning/edwards25519-extra.git v0.0.0-20211229043746-2f91fcc9fbdb // indirect
-	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/sys v0.8.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
