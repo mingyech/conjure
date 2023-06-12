@@ -76,7 +76,7 @@ func setUp(tun *os.File, name string) error {
 	copy(ifreq[:], name)
 
 	// Get the current interface flags
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifreq[0])))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(syscall.SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
 	if errno != 0 {
 		tun.Close()
 		return fmt.Errorf("error getting interface flags: %v", errno)
@@ -88,7 +88,7 @@ func setUp(tun *os.File, name string) error {
 	binary.LittleEndian.PutUint16(ifreq[0x10:], flags)
 
 	// Set the new interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifreq[0])))
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(syscall.SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
 	if errno != 0 {
 		tun.Close()
 		return fmt.Errorf("error setting interface flags: %v", errno)
