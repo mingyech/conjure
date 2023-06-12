@@ -59,9 +59,7 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 		ExtendedMasterSecret:    dtls.RequireExtendedMasterSecret,
 		CustomClientHelloRandom: func() [handshake.RandomBytesLength]byte { return clientHelloRandom },
 
-		// we verify the peer's cert using VerifyPeerCertificate, because go does not generate dertiministic
-		// ecdsa signatures in certificate and checks self signed certificate by comparing their hashes,
-		// so the verification fails unless we check the signature without using hashes ourselves
+		// We use VerifyPeerCertificate to authenticate the peer's certificate. This is necessary as Go's non-deterministic ECDSA signatures and hash comparison method for self-signed certificates can cause verification failure.
 		InsecureSkipVerify:    true,
 		VerifyPeerCertificate: verifyServerCertificate,
 	}
