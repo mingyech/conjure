@@ -70,18 +70,13 @@ func NewDNAT() (*DNAT, error) {
 
 // setUp brings up a network interface represented by the given name.
 func setUp(tun *os.File, name string) error {
-	const (
-		IFF_UP       = 0x1    // Interface is up
-		SIOCGIFFLAGS = 0x8913 // Get interface flags
-		SIOCSIFFLAGS = 0x8914 // Set interface flags
-	)
 	var ifreq [32]byte
 
 	// Populate the interface name
 	copy(ifreq[:], name)
 
 	// Get the current interface flags
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), syscall.SIOCGIFFLAGS, uintptr(unsafe.Pointer(&ifreq[0])))
 	if errno != 0 {
 		tun.Close()
 		return fmt.Errorf("error getting interface flags: %v", errno)
@@ -89,11 +84,11 @@ func setUp(tun *os.File, name string) error {
 
 	// Add the IFF_UP flag to bring the interface up
 	flags := binary.LittleEndian.Uint16(ifreq[0x10:])
-	flags |= IFF_UP
+	flags |= syscall.IFF_UP
 	binary.LittleEndian.PutUint16(ifreq[0x10:], flags)
 
 	// Set the new interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), uintptr(SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, tun.Fd(), syscall.SIOCSIFFLAGS, uintptr(unsafe.Pointer(&ifreq[0])))
 	if errno != 0 {
 		tun.Close()
 		return fmt.Errorf("error setting interface flags: %v", errno)
