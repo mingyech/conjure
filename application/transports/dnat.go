@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"golang.org/x/sys/unix"
 )
 
 func NewDNAT() (*DNAT, error) {
@@ -72,29 +73,23 @@ func NewDNAT() (*DNAT, error) {
 
 // setUp brings up a network interface represented by the given name.
 func setUp(tun *os.File, name string) error {
-	ifreq := make([]byte, 0x28)
-
-	// Populate the interface name
-	copy(ifreq[:], name)
-
-	// Get the current interface flags
-	fmt.Printf("fd before SIOCGIFFLAGS: %v\n", tun.Fd())
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(tun.Fd()), uintptr(syscall.SIOCGIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
-	if errno != 0 {
-		tun.Close()
-		return fmt.Errorf("error getting interface flags: %v", errno)
+	ifreq, err := unix.NewIfreq(name)
+	if err != nil {
+		return fmt.Errorf("error creating ifreq: %v", err)
 	}
 
-	// Add the IFF_UP flag to bring the interface up
-	flags := binary.LittleEndian.Uint16(ifreq[0x10:])
-	flags |= syscall.IFF_UP
-	binary.LittleEndian.PutUint16(ifreq[0x10:], flags)
+	// Get the current interface flags
+	err = unix.IoctlIfreq(int(tun.Fd()), syscall.SIOCGIFFLAGS, ifreq)
+	if err != nil {
+		return fmt.Errorf("error getting interface flags: %v", err)
+	}
+
+	ifreq.SetUint16(ifreq.Uint16() | syscall.IFF_UP)
 
 	// Set the new interface flags
-	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, uintptr(tun.Fd()), uintptr(syscall.SIOCSIFFLAGS), uintptr(unsafe.Pointer(&ifreq[0])))
-	if errno != 0 {
-		tun.Close()
-		return fmt.Errorf("error setting interface flags: %v", errno)
+	err = unix.IoctlIfreq(int(tun.Fd()), syscall.SIOCSIFFLAGS, ifreq)
+	if err != nil {
+		return fmt.Errorf("error setting interface flags: %v", err)
 	}
 
 	return nil
