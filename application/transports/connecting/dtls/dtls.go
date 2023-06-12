@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/libp2p/go-reuseport"
 	dd "github.com/refraction-networking/conjure/application/lib"
+	"github.com/refraction-networking/conjure/application/log"
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/dtls"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
@@ -23,7 +25,8 @@ const (
 const listenPort = 41245
 
 type Transport struct {
-	dnat *transports.DNAT
+	dnat         *transports.DNAT
+	dtlsListener *dtls.Listener
 }
 
 // Name returns name of the transport
@@ -43,6 +46,13 @@ func (Transport) GetIdentifier(reg *dd.DecoyRegistration) string {
 
 // NewTransport creates a new dtls transport
 func NewTransport() (*Transport, error) {
+	addr := &net.UDPAddr{Port: listenPort}
+
+	listener, err := dtls.Listen(addr)
+	if err != nil {
+		return nil, fmt.Errorf("error creating dtls listner: %v", err)
+	}
+
 	dnat, err := transports.NewDNAT()
 
 	if err != nil {
@@ -50,7 +60,8 @@ func NewTransport() (*Transport, error) {
 	}
 
 	return &Transport{
-		dnat: dnat,
+		dnat:         dnat,
+		dtlsListener: listener,
 	}, nil
 }
 
@@ -71,9 +82,17 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 		return nil, fmt.Errorf("error dialing client: %v", err)
 	}
 
-	dtlsConn, err := dtls.ClientWithContext(ctx, udpConn, reg.Keys.SharedSecret)
+	ctxtimeout, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	defer cancel()
+
+	dtlsConn, err := dtls.ClientWithContext(ctxtimeout, udpConn, reg.Keys.SharedSecret)
 	if err != nil {
-		return nil, fmt.Errorf("error establishing dtls connection: %v", err)
+		log.Debugf("error connecting to dtls client: %v, fallback to listen\n", err)
+		conn, err := t.dtlsListener.AcceptFromSecret(reg.Keys.SharedSecret)
+		if err != nil {
+			return nil, fmt.Errorf("error accepting dtls connection from secret: %v", err)
+		}
+		return conn, nil
 	}
 
 	return dtlsConn, nil
