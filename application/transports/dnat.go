@@ -78,8 +78,13 @@ func setUp(tun *os.File, name string) error {
 		return fmt.Errorf("error creating ifreq: %v", err)
 	}
 
+	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_RAW, unix.IPPROTO_IP)
+	if err != nil {
+		return fmt.Errorf("error creating socket: %v", err)
+	}
+
 	// Get the current interface flags
-	err = unix.IoctlIfreq(int(tun.Fd()), syscall.SIOCGIFFLAGS, ifreq)
+	err = unix.IoctlIfreq(fd, syscall.SIOCGIFFLAGS, ifreq)
 	if err != nil {
 		return fmt.Errorf("error getting interface flags: %v", err)
 	}
@@ -87,7 +92,7 @@ func setUp(tun *os.File, name string) error {
 	ifreq.SetUint16(ifreq.Uint16() | syscall.IFF_UP)
 
 	// Set the new interface flags
-	err = unix.IoctlIfreq(int(tun.Fd()), syscall.SIOCSIFFLAGS, ifreq)
+	err = unix.IoctlIfreq(fd, syscall.SIOCSIFFLAGS, ifreq)
 	if err != nil {
 		return fmt.Errorf("error setting interface flags: %v", err)
 	}
