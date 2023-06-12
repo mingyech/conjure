@@ -10,7 +10,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/golang-lru v0.6.0
-	github.com/mingyech/dtls/v2 v2.0.0-20230612190757-83e8b803b495
+	github.com/mingyech/dtls/v2 v2.0.0-20230612200452-6f507a05540b
 	github.com/mroth/weightedrand v1.0.0
 	github.com/pebbe/zmq4 v1.2.9
 	github.com/pelletier/go-toml v1.9.5
@@ -28,6 +28,7 @@ require (
 require github.com/oschwald/geoip2-golang v1.8.0
 
 require (
+	github.com/mingyech/transport/v2 v2.0.0-20230613080026-3d765f91dfff // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/transport/v2 v2.2.1 // indirect
 )
