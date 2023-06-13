@@ -184,15 +184,15 @@ func (l *Listener) acceptLoop() {
 			l.connMapMutex.RLock()
 			defer l.connMapMutex.RUnlock()
 
-			acceptChan, ok := l.connMap[connID]
+			acceptCh, ok := l.connMap[connID]
 
 			if !ok {
 				return
 			}
 
-			acceptChan <- sctpConn
+			acceptCh <- sctpConn
 
-			close(acceptChan)
+			close(acceptCh)
 		}()
 	}
 }
@@ -257,7 +257,7 @@ func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, secret []byt
 	l.registerCert(connID, clientCert, serverCert)
 	defer l.removeCert(connID)
 
-	connChan, err := l.registerChannel(connID)
+	connCh, err := l.registerChannel(connID)
 	if err != nil {
 		return nil, fmt.Errorf("error registering channel: %v", err)
 	}
@@ -265,7 +265,7 @@ func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, secret []byt
 
 	// Adding context-aware select statement for cancellation
 	select {
-	case conn := <-connChan:
+	case conn := <-connCh:
 		return conn, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()

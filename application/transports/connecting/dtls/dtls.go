@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/libp2p/go-reuseport"
 	dd "github.com/refraction-networking/conjure/application/lib"
-	"github.com/refraction-networking/conjure/application/log"
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/dtls"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
@@ -77,25 +77,63 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 
 	laddr := net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: listenPort}
 
-	udpConn, err := reuseport.Dial("udp", laddr.String(), clientAddr.String())
-	if err != nil {
-		return nil, fmt.Errorf("error dialing client: %v", err)
-	}
+	connCh := make(chan net.Conn, 2)
+	errCh := make(chan error, 2)
 
-	ctxtimeout, cancel := context.WithTimeout(context.Background(), 7*time.Second)
-	defer cancel()
+	go func() {
+		udpConn, err := reuseport.Dial("udp", laddr.String(), clientAddr.String())
+		if err != nil {
+			errCh <- fmt.Errorf("error connecting to dtls client: %v", err)
+			return
+		}
 
-	dtlsConn, err := dtls.ClientWithContext(ctxtimeout, udpConn, reg.Keys.SharedSecret)
-	if err != nil {
-		log.Debugf("error connecting to dtls client: %v, fallback to listen\n", err)
+		ctxtimeout, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+		defer cancel()
+
+		dtlsConn, err := dtls.ClientWithContext(ctxtimeout, udpConn, reg.Keys.SharedSecret)
+		if err != nil {
+			errCh <- fmt.Errorf("error connecting to dtls client: %v", err)
+			return
+		}
+
+		connCh <- dtlsConn
+	}()
+
+	go func() {
 		conn, err := t.dtlsListener.AcceptFromSecret(reg.Keys.SharedSecret)
 		if err != nil {
-			return nil, fmt.Errorf("error accepting dtls connection from secret: %v", err)
+			errCh <- fmt.Errorf("error accepting dtls connection from secret: %v", err)
+			return
 		}
-		return conn, nil
+
+		connCh <- conn
+	}()
+
+	var errs []error
+	for i := 0; i < 2; i++ {
+		select {
+		case conn := <-connCh:
+			if conn != nil {
+				return conn, nil // success, so return the connection
+			}
+		case err := <-errCh:
+			if err != nil { // store the error
+				errs = append(errs, err)
+			}
+		}
 	}
 
-	return dtlsConn, nil
+	// combine errors into a single error
+	var combinedErr error
+	if len(errs) > 0 {
+		errStrings := make([]string, len(errs))
+		for i, err := range errs {
+			errStrings[i] = err.Error()
+		}
+		combinedErr = fmt.Errorf(strings.Join(errStrings, "; "))
+	}
+
+	return nil, combinedErr // if we reached here, both attempts failed
 }
 
 func (Transport) GetSrcPort(libVersion uint, seed []byte, params any) (uint16, error) {
