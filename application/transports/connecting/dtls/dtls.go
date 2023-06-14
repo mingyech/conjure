@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"time"
 
 	"github.com/libp2p/go-reuseport"
 	dd "github.com/refraction-networking/conjure/application/lib"
@@ -87,10 +86,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 			return
 		}
 
-		ctxtimeout, cancel := context.WithTimeout(context.Background(), 7*time.Second)
-		defer cancel()
-
-		dtlsConn, err := dtls.ClientWithContext(ctxtimeout, udpConn, reg.Keys.SharedSecret)
+		dtlsConn, err := dtls.ClientWithContext(ctx, udpConn, reg.Keys.SharedSecret)
 		if err != nil {
 			errCh <- fmt.Errorf("error connecting to dtls client: %v", err)
 			return
@@ -100,7 +96,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 	}()
 
 	go func() {
-		conn, err := t.dtlsListener.AcceptFromSecret(reg.Keys.SharedSecret)
+		conn, err := t.dtlsListener.AcceptFromSecretWithContext(ctx, reg.Keys.SharedSecret)
 		if err != nil {
 			errCh <- fmt.Errorf("error accepting dtls connection from secret: %v", err)
 			return
