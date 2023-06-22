@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-reuseport"
 	dd "github.com/refraction-networking/conjure/application/lib"
 	"github.com/refraction-networking/conjure/application/transports"
+	"github.com/refraction-networking/conjure/pkg/core"
 	"github.com/refraction-networking/conjure/pkg/dtls"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -40,7 +41,7 @@ func (Transport) LogPrefix() string {
 
 // GetIdentifier returns an identifier unique a registration
 func (Transport) GetIdentifier(reg *dd.DecoyRegistration) string {
-	return string(reg.Keys.ConjureHMAC("dtlsTrasportHMACString"))
+	return string(core.ConjureHMAC(reg.Keys.SharedSecret, "dtlsTrasportHMACString"))
 }
 
 // NewTransport creates a new dtls transport
