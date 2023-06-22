@@ -8,7 +8,7 @@ TD_LIB=./libtapdance/libtapdance.a
 LIBS=${RUST_LIB} ${TD_LIB} -L/usr/local/lib -lpcap -lpfring -lzmq -lcrypto -lpthread -lrt -lgmp -ldl -lm
 CFLAGS = -Wall -DENABLE_BPF -DHAVE_PF_RING -DHAVE_PF_RING_ZC -DTAPDANCE_USE_PF_RING_ZERO_COPY -O2 # -g
 PROTO_RS_PATH=src/signalling.rs
-
+EXE_DIR=./bin
 
 all: rust libtd conjure app registration-server ${PROTO_RS_PATH}
 
@@ -21,25 +21,47 @@ test:
 	cargo test --${DEBUG_OR_RELEASE}
 
 app:
-	cd ./application/ && make
+	[ -d $(EXE_DIR) ] || mkdir -p $(EXE_DIR)
+	go build -o ${EXE_DIR}/application ./application
 
 libtd:
 	cd ./libtapdance/ && make libtapdance.a
 
 conjure: detect.c loadkey.c rust_util.c rust libtapdance
-	${CC} ${CFLAGS} -o $@ detect.c loadkey.c rust_util.c ${LIBS}
-# gcc -Wall -DENABLE_BPF -DHAVE_PF_RING -DHAVE_PF_RING_ZC -DTAPDANCE_USE_PF_RING_ZERO_COPY -O2 -o conjure detect.c loadkey.c rust_util.c ./target/release/librust_dark_decoy.a ./libtapdance/libtapdance.a -lpfring -lpcap -L/usr/local/lib -lzmq -lcrypto -lpthread -lrt -lgmp -ldl -lm
+	[ -d $(EXE_DIR) ] || mkdir -p $(EXE_DIR)
+	${CC} ${CFLAGS} -o ${EXE_DIR}/$@ detect.c loadkey.c rust_util.c ${LIBS}
+
 
 conjure-sim: detect.c loadkey.c rust_util.c rust libtapdance
-	${CC} -Wall -O2 -o conjure detect.c loadkey.c rust_util.c ${LIBS}
+	[ -d $(EXE_DIR) ] || mkdir -p $(EXE_DIR)
+	${CC} -Wall -O2 -o ${EXE_DIR}/conjure detect.c loadkey.c rust_util.c ${LIBS}
 
 registration-server:
-	cd ./cmd/registration-server/ && make
+	[ -d $(EXE_DIR) ] || mkdir -p $(EXE_DIR)
+	go build -o ${EXE_DIR}/registration-server ./cmd/registration-server
 
-# Note this copies in the whole current directory as context and results in
-# overly large context. should not be used to build release/production images.
-custom-build:
-	docker build --build-arg CUSTOM_BUILD=1 -f docker/Dockerfile .
+PARAMS := det app reg zbalance sim
+target := unk
+# makefile arguments take preference, if one is not provided we check the environment variable.
+# If that is also missing then we use "latest" and install pfring from pkg in the docker build.
+ifndef pfring_ver
+	ifdef PFRING_VER
+		pfring_ver := ${PFRING_VER}
+	else
+		pfring_ver := latest
+	endif
+endif
+
+container:
+ifeq (unk,$(target))
+	DOCKER_BUILDKIT=1 docker build -t conjure -t pf-$(pfring_ver) -f  docker/Dockerfile --build-arg pfring_ver=$(pfring_ver) .
+#	@printf "DOCKER_BUILDKIT=1 docker build -t conjure -f  docker/Dockerfile --build-arg pfring_ver=$(pfring_ver) .\n"
+else ifneq  (,$(findstring $(target), $(PARAMS)))
+	DOCKER_BUILDKIT=1 docker build --target conjure_$(target) -t conjure_$(target) -t pf-$(pfring_ver) -f docker/Dockerfile --build-arg pfring_ver=$(pfring_ver) .
+#	@printf "DOCKER_BUILDKIT=1 docker build --target conjure_$(target) -t conjure_$(target) -f docker/Dockerfile --build-arg pfring_ver=$(pfring_ver) .\n"
+else
+	@printf "unrecognized container target $(target) - please use one of [ $(PARAMS) ]\n"
+endif
 
 
 backup-config:
@@ -63,7 +85,7 @@ endif
 
 clean:
 	cargo clean
-	rm -f ${TARGETS} *.o *~
+	rm -f ${TARGETS} *.o *~ ${EXE_DIR}
 
 ${PROTO_RS_PATH}:
 	cd ./proto/ && make

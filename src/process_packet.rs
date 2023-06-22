@@ -295,7 +295,7 @@ impl PerCoreGlobal {
                 let vsp = res.2;
 
                 zmq_msg.set_shared_secret(shared_secret);
-                zmq_msg.set_registration_payload(vsp);
+                zmq_msg.registration_payload = Some(vsp).into();
                 zmq_msg.set_registration_source(RegistrationSource::Detector);
                 zmq_msg.set_decoy_address(decoy);
                 zmq_msg.set_registration_address(src);
@@ -311,7 +311,7 @@ impl PerCoreGlobal {
                     }
                 };
 
-                match self.zmq_sock.send(&zmq_payload, 0) {
+                match self.zmq_sock.send(zmq_payload, 0) {
                     Ok(_) => true,
                     Err(e) => {
                         warn!("Failed to send registration information over ZMQ: {}", e);
@@ -382,7 +382,7 @@ mod tests {
 
     #[test]
     fn test_filter_station_traffic() {
-        env::set_var("CJ_STATION_CONFIG", "./application/config.toml");
+        env::set_var("CJ_STATION_CONFIG", "./application/app_config.toml");
 
         // --
         let conf_path = env::var("CJ_STATION_CONFIG").unwrap();

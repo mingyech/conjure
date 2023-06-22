@@ -1,6 +1,7 @@
 package regprocessor
 
 import (
+	"crypto/ed25519"
 	"encoding/binary"
 	"encoding/hex"
 	"net"
@@ -22,7 +23,7 @@ var (
 	secret    []byte
 )
 
-func newRegProcessor() RegProcessor {
+func mockRegProcessor() RegProcessor {
 	return RegProcessor{
 		metrics: metrics.NewMetrics(log.NewEntry(log.StandardLogger()), 5*time.Second),
 	}
@@ -47,7 +48,7 @@ func generateC2SWrapperPayload() (c2sPayload *pb.C2SWrapper, c2sPayloadBytes []b
 	t := pb.TransportType_Min
 
 	c2s := pb.ClientToStation{
-		Transport: &t,
+		Transport:           &t,
 		DecoyListGeneration: &generation,
 		CovertAddress:       &covert,
 		V4Support:           &trueBool,
@@ -73,59 +74,52 @@ func generateC2SWrapperPayload() (c2sPayload *pb.C2SWrapper, c2sPayloadBytes []b
 func TestC2SWrapperProcessing(t *testing.T) {
 	c2sPayload, _ := generateC2SWrapperPayload()
 
-	p := newRegProcessor()
+	p := mockRegProcessor()
 
 	zmqPayload, err := p.processC2SWrapper(c2sPayload, []byte(net.ParseIP("127.0.0.1").To16()), pb.RegistrationSource_API)
-	if err != nil {
-		t.Fatalf("failed to generate ZMQ payload: expected nil, got %v", err)
-	}
+	require.Nil(t, err, "failed to generate ZMQ payload: expected nil, got %v", err)
 
 	var retrievedPayload pb.C2SWrapper
 	err = proto.Unmarshal(zmqPayload, &retrievedPayload)
-	if err != nil {
-		t.Fatalf("failed to unmarshal ClientToStation from ZMQ payload: expected nil, got %v", err)
-	}
-
-	if retrievedPayload.RegistrationPayload.GetDecoyListGeneration() != c2sPayload.RegistrationPayload.GetDecoyListGeneration() {
-		t.Fatalf("decoy list generation in retrieved ClientToStation doesn't match: expected %d, got %d", c2sPayload.RegistrationPayload.GetDecoyListGeneration(), retrievedPayload.RegistrationPayload.GetDecoyListGeneration())
-	}
-
-	if retrievedPayload.RegistrationPayload.GetCovertAddress() != c2sPayload.RegistrationPayload.GetCovertAddress() {
-		t.Fatalf("covert address in retrieved ClientToStation doesn't match: expected %s, got %s", c2sPayload.RegistrationPayload.GetCovertAddress(), retrievedPayload.RegistrationPayload.GetCovertAddress())
-	}
-
-	if retrievedPayload.RegistrationPayload.GetV4Support() != c2sPayload.RegistrationPayload.GetV4Support() {
-		t.Fatalf("v4 support in retrieved ClientToStation doesn't match: expected %v, got %v", c2sPayload.RegistrationPayload.GetV4Support(), retrievedPayload.RegistrationPayload.GetV4Support())
-	}
-
-	if retrievedPayload.RegistrationPayload.GetV6Support() != c2sPayload.RegistrationPayload.GetV6Support() {
-		t.Fatalf("v6 support in retrieved ClientToStation doesn't match: expected %v, got %v", c2sPayload.RegistrationPayload.GetV6Support(), retrievedPayload.RegistrationPayload.GetV6Support())
-	}
-
-	if net.IP(retrievedPayload.GetRegistrationAddress()).String() != "127.0.0.1" {
-		t.Fatalf("source address in retrieved C2Swrapper doesn't match: expected %v, got %v", "127.0.0.1", net.IP(retrievedPayload.GetRegistrationAddress()).String())
-	}
-
-	if retrievedPayload.GetRegistrationSource() != pb.RegistrationSource_API {
-		t.Fatalf("Registration source in retrieved C2Swrapper doesn't match: expected %v, got %v", pb.RegistrationSource_API, retrievedPayload.GetRegistrationSource())
-	}
+	require.Nil(t, err, "failed to unmarshal ClientToStation from ZMQ payload: expected nil, got %v", err)
+	require.Equal(t, c2sPayload.RegistrationPayload.GetDecoyListGeneration(), retrievedPayload.RegistrationPayload.GetDecoyListGeneration())
+	require.Equal(t, c2sPayload.RegistrationPayload.GetCovertAddress(), retrievedPayload.RegistrationPayload.GetCovertAddress())
+	require.Equal(t, c2sPayload.RegistrationPayload.GetV4Support(), retrievedPayload.RegistrationPayload.GetV4Support())
+	require.Equal(t, c2sPayload.RegistrationPayload.GetV6Support(), retrievedPayload.RegistrationPayload.GetV6Support())
+	require.Equal(t, "127.0.0.1", net.IP(retrievedPayload.GetRegistrationAddress()).String())
+	require.Equal(t, pb.RegistrationSource_API, retrievedPayload.GetRegistrationSource())
 
 	altSource := pb.RegistrationSource_DetectorPrescan
 	c2sPayload.RegistrationSource = &altSource
 	zmqPayload, err = p.processC2SWrapper(c2sPayload, []byte(net.ParseIP("127.0.0.1").To16()), pb.RegistrationSource_API)
-	if err != nil {
-		t.Fatalf("failed to generate ZMQ payload: expected nil, got %v", err)
-	}
+	require.Nil(t, err, "failed to generate ZMQ payload: expected nil, got %v", err)
 
 	var retrievedPayload1 pb.C2SWrapper
 	err = proto.Unmarshal(zmqPayload, &retrievedPayload1)
-	if err != nil {
-		t.Fatalf("failed to unmarshal ClientToStation from ZMQ payload: expected nil, got %v", err)
-	}
+	require.Nil(t, err, "failed to unmarshal ClientToStation from ZMQ payload: expected nil, got %v", err)
+	require.Equal(t, pb.RegistrationSource_DetectorPrescan, retrievedPayload1.GetRegistrationSource())
 
-	if retrievedPayload1.GetRegistrationSource() != pb.RegistrationSource_DetectorPrescan {
-		t.Fatalf("Registration source in retrieved C2Swrapper doesn't match: expected %v, got %v", pb.RegistrationSource_DetectorPrescan, retrievedPayload.GetRegistrationSource())
-	}
+	_, err = p.processC2SWrapper(c2sPayload, []byte(net.ParseIP("127.0.0.1").To16()), pb.RegistrationSource_API)
+	require.Nil(t, err, "failed to generate ZMQ payload: expected nil, got %v", err)
+
+	pub, priv, err := ed25519.GenerateKey(nil)
+	require.Nil(t, err)
+	port := uint32(22)
+	rr := &pb.RegistrationResponse{DstPort: &port}
+	c2sPayload.RegistrationResponse = rr
+	p.privkey = priv
+	p.authenticated = true
+	zmqPayload, err = p.processC2SWrapper(c2sPayload, []byte(net.ParseIP("127.0.0.1").To16()), pb.RegistrationSource_API)
+	require.Nil(t, err, "failed to generate ZMQ payload: expected nil, got %v", err)
+
+	var retrievedPayload2 pb.C2SWrapper
+	err = proto.Unmarshal(zmqPayload, &retrievedPayload2)
+	require.Nil(t, err, "failed to unmarshal ClientToStation from ZMQ payload: expected nil, got %v", err)
+
+	rrb, err := proto.Marshal(rr)
+	require.Nil(t, err)
+	require.Equal(t, rrb, retrievedPayload2.RegRespBytes)
+	require.True(t, ed25519.Verify(pub, retrievedPayload2.RegRespBytes, retrievedPayload2.RegRespSignature))
 }
 
 func BenchmarkRegistration(b *testing.B) {
@@ -139,7 +133,7 @@ func BenchmarkRegistration(b *testing.B) {
 		log.Fatalln("failed to bind ZMQ socket:", err)
 	}
 
-	s := newRegProcessor()
+	s := mockRegProcessor()
 	s.sock = sock
 
 	body, _ := generateC2SWrapperPayload()
@@ -161,6 +155,10 @@ type fakeZmqSender struct {
 
 func (z fakeZmqSender) SendBytes(data []byte, flag zmq.Flag) (int, error) {
 	return z.fakeSend(data, flag)
+}
+
+func (z fakeZmqSender) Close() error {
+	return nil
 }
 
 func TestRegisterUnidirectional(t *testing.T) {
@@ -197,7 +195,7 @@ func TestRegisterUnidirectional(t *testing.T) {
 		fakeSend: fakeSendFunc,
 	}
 
-	s := newRegProcessor()
+	s := mockRegProcessor()
 	s.sock = fakeSender
 
 	err := s.RegisterUnidirectional(c2sPayload, regSrc, net.ParseIP(updatedIP))
@@ -243,7 +241,7 @@ func TestUnspecifiedReg(t *testing.T) {
 		fakeSend: fakeSendFunc,
 	}
 
-	s := newRegProcessor()
+	s := mockRegProcessor()
 	s.sock = fakeSender
 
 	err := s.RegisterUnidirectional(c2sPayload, realRegSrc, net.ParseIP(updatedIP))
@@ -285,7 +283,7 @@ func TestUpdateIP(t *testing.T) {
 		fakeSend: fakeSendFunc,
 	}
 
-	s := newRegProcessor()
+	s := mockRegProcessor()
 	s.sock = fakeSender
 
 	err := s.RegisterUnidirectional(c2sPayload, usedRegSrc, net.ParseIP(updatedIP))
@@ -295,12 +293,12 @@ func TestUpdateIP(t *testing.T) {
 	}
 }
 
-type fakeIpSelector struct {
+type fakeIPSelector struct {
 	v4Addr net.IP
 	v6Addr net.IP
 }
 
-func (f fakeIpSelector) Select(seed []byte, generation uint, clientLibVer uint, v6Support bool) (net.IP, error) {
+func (f fakeIPSelector) Select(seed []byte, generation uint, clientLibVer uint, v6Support bool) (net.IP, error) {
 	if v6Support {
 		return f.v6Addr, nil
 	}
@@ -341,12 +339,12 @@ func TestRegisterBidirectional(t *testing.T) {
 	fakeV4Phantom := "9.8.7.6"
 	fakeV6Phantom := "fbdc:8e7d:872c:ce49:5470:8223:db34:7d67"
 
-	fakeSelector := fakeIpSelector{
+	fakeSelector := fakeIPSelector{
 		v4Addr: net.ParseIP(fakeV4Phantom),
 		v6Addr: net.ParseIP(fakeV6Phantom),
 	}
 
-	s := newRegProcessor()
+	s := mockRegProcessor()
 	s.sock = fakeSender
 	s.ipSelector = fakeSelector
 	err := s.AddTransport(pb.TransportType_Min, min.Transport{})

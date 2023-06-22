@@ -13,7 +13,6 @@ extern crate rand;
 extern crate protobuf;
 extern crate redis;
 extern crate serde;
-extern crate serde_derive;
 extern crate toml;
 extern crate tuntap; // https://github.com/ewust/tuntap.rs
 extern crate zmq;
@@ -21,7 +20,7 @@ extern crate zmq;
 use std::mem::transmute;
 use util::precise_time_ns;
 
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use std::env;
 use std::fs;
 
@@ -122,7 +121,7 @@ impl PerCoreGlobal {
         // Parse toml station config to get filter list
         let conf_path = env::var(STATION_CONF_PATH).unwrap();
         let contents = fs::read_to_string(conf_path)
-            .expect("Something went wrong reading the station config file");
+            .expect("Something went wrong reading the station config file ({conf_path})");
         let value: StationConfig =
             toml::from_str(&contents).expect("Failed to parse toml station config");
 
@@ -269,7 +268,7 @@ pub unsafe extern "C" fn rust_detect_init(
     ckey: *const u8,
     workers_socket_addr: *const c_char,
 ) -> RustGlobalsStruct {
-    logging::init(log::LogLevel::Debug, lcore_id);
+    logging::init(log::Level::Debug, lcore_id);
 
     let key = *array_ref![std::slice::from_raw_parts(ckey, 32_usize), 0, 32];
 
