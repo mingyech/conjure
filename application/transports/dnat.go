@@ -138,6 +138,9 @@ func (d *DNAT) AddEntry(src net.IP, sport uint16, dst net.IP, dport uint16) erro
 	)
 
 	pkt := buffer.Bytes()
-	d.tun.Write(pkt)
+	_, err = d.tun.Write(pkt)
+	if err != nil {
+		return fmt.Errorf("error writing to tun interface: %v", err)
+	}
 	return nil
 }

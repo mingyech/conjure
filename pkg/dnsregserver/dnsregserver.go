@@ -37,7 +37,7 @@ func NewDNSRegServer(domain string, udpAddr string, privkey []byte, regprocessor
 	}
 
 	if len(privkey) < 32 {
-		return nil, fmt.Errorf("Expected 32 byte privkey: got %d", len(privkey))
+		return nil, fmt.Errorf("expected 32 byte privkey: got %d", len(privkey))
 	}
 
 	respder, err := responder.NewDnsResponder(domain, udpAddr, privkey[:32])

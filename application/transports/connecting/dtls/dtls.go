@@ -73,7 +73,10 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 
 	clientAddr := net.UDPAddr{IP: net.ParseIP(reg.GetRegistrationAddress()), Port: int(reg.GetSrcPort())}
 
-	t.dnat.AddEntry(clientAddr.IP, uint16(clientAddr.Port), reg.PhantomIp, reg.PhantomPort)
+	err := t.dnat.AddEntry(clientAddr.IP, uint16(clientAddr.Port), reg.PhantomIp, reg.PhantomPort)
+	if err != nil {
+		return nil, fmt.Errorf("error adding DNAT entry: %v", err)
+	}
 
 	laddr := net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: listenPort}
 

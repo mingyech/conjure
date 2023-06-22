@@ -111,7 +111,7 @@ func readKey(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	} else if len(privkey) < ed25519.PrivateKeySize {
-		return nil, fmt.Errorf("Private Key too short")
+		return nil, fmt.Errorf("private Key too short")
 	}
 
 	return privkey[:ed25519.PrivateKeySize], nil

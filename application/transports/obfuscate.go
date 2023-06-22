@@ -211,7 +211,7 @@ type XORObfuscator struct{}
 // TryReveal for XORObfuscator just returns the provided ciphertext without modification
 func (XORObfuscator) TryReveal(cipherText []byte, privateKey [32]byte) ([]byte, error) {
 	if len(cipherText)%2 != 0 || len(cipherText) == 0 {
-		return nil, errors.New("Unexpected message with even length")
+		return nil, errors.New("unexpected message with even length")
 	}
 
 	n := len(cipherText) / 2
