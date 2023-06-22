@@ -81,11 +81,14 @@ func main() {
 		ComputeChecksums: true,
 		FixLengths:       true,
 	}
-	gopacket.SerializeLayers(buffer, opts,
+	err = gopacket.SerializeLayers(buffer, opts,
 		ipLayer,
 		udpLayer,
 		gopacket.Payload(payload),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	pkt := buffer.Bytes()
 	// pkt = []byte{69, 0, 0, 39, 0, 1, 0, 0, 64, 17, 106, 176, 1, 2, 3, 5, 5, 6, 7, 9, 26, 133, 1, 187, 0, 19, 97, 164, 72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100}
@@ -99,11 +102,14 @@ func main() {
 	payload = []byte("Hi again")
 
 	buffer = gopacket.NewSerializeBuffer()
-	gopacket.SerializeLayers(buffer, opts,
+	err = gopacket.SerializeLayers(buffer, opts,
 		ipLayer,
 		udpLayer,
 		gopacket.Payload(payload),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	pkt = buffer.Bytes()
 	tun.Write(pkt)

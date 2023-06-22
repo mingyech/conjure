@@ -131,11 +131,14 @@ func (d *DNAT) AddEntry(src net.IP, sport uint16, dst net.IP, dport uint16) erro
 		ComputeChecksums: true,
 		FixLengths:       true,
 	}
-	gopacket.SerializeLayers(buffer, opts,
+	err = gopacket.SerializeLayers(buffer, opts,
 		ipLayer,
 		udpLayer,
 		gopacket.Payload(payload),
 	)
+	if err != nil {
+		return fmt.Errorf("error serializing injected packet: %v", err)
+	}
 
 	pkt := buffer.Bytes()
 	_, err = d.tun.Write(pkt)
