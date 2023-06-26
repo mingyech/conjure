@@ -289,7 +289,6 @@ type DecoyRegistration struct {
 	Covert, Mask       string
 	Flags              *pb.RegistrationFlags
 	Transport          pb.TransportType
-	TransportPtr       *Transport
 	TransportParams    any
 	RegistrationTime   time.Time
 	RegistrationSource *pb.RegistrationSource

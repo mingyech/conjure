@@ -349,11 +349,6 @@ func (rm *RegistrationManager) NewRegistration(c2s *pb.ClientToStation, conjureK
 			err)
 	}
 
-	var transport, ok = rm.registeredDecoys.transports[c2s.GetTransport()]
-	if !ok {
-		return nil, fmt.Errorf("unknown transport")
-	}
-
 	transportParams, err := rm.getTransportParams(c2s.GetTransport(), c2s.GetTransportParams(), clientLibVer)
 	if err != nil {
 		return nil, fmt.Errorf("error handling transport params: %s", err)
@@ -379,7 +374,6 @@ func (rm *RegistrationManager) NewRegistration(c2s *pb.ClientToStation, conjureK
 		Keys:             conjureKeys,
 		Covert:           c2s.GetCovertAddress(),
 		Transport:        c2s.GetTransport(),
-		TransportPtr:     &transport,
 		TransportParams:  transportParams,
 		Flags:            c2s.Flags,
 		clientPort:       srcPort,

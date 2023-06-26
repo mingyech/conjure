@@ -16,7 +16,7 @@ require (
 	github.com/pelletier/go-toml v1.9.5
 	github.com/pion/logging v0.2.2
 	github.com/pion/sctp v1.8.5
-	github.com/refraction-networking/gotapdance v1.5.3
+	github.com/refraction-networking/gotapdance v1.5.2
 	github.com/sirupsen/logrus v1.9.0
 	github.com/stretchr/testify v1.8.4
 	gitlab.com/yawning/obfs4.git v0.0.0-20220904064028-336a71d6e4cf
