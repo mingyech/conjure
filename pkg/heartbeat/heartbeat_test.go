@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"net"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -19,8 +20,8 @@ func TestReadWrite(t *testing.T) {
 	err = Client(client, conf)
 	require.Nil(t, err)
 
-	sent := 0
-	recvd := 0
+	sent := uint32(0)
+	recvd := uint32(0)
 	toSend := []byte("testtt")
 	stop := time.After(conf.Interval * 2)
 
@@ -36,7 +37,7 @@ func TestReadWrite(t *testing.T) {
 					continue
 				}
 				require.Equal(t, toSend, buffer[:n])
-				recvd++
+				atomic.AddUint32(&recvd, 1)
 			}
 		}
 	}()
@@ -49,7 +50,7 @@ func TestReadWrite(t *testing.T) {
 			default:
 				_, err := client.Write(toSend)
 				require.Nil(t, err)
-				sent++
+				atomic.AddUint32(&sent, 1)
 				time.Sleep(10 * time.Millisecond)
 			}
 		}
@@ -57,7 +58,7 @@ func TestReadWrite(t *testing.T) {
 
 	<-stop
 
-	require.Equal(t, sent, recvd)
+	require.Equal(t, atomic.LoadUint32(&sent), atomic.LoadUint32(&recvd))
 }
 
 func TestSend(t *testing.T) {
