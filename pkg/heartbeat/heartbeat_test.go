@@ -97,7 +97,10 @@ func TestTimeout(t *testing.T) {
 	go func() {
 		for {
 			buffer := make([]byte, 4096)
-			client.Read(buffer)
+			_, err := client.Read(buffer)
+			if err != nil {
+				return
+			}
 		}
 	}()
 
