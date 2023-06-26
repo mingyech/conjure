@@ -11,6 +11,7 @@ import (
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
 	"github.com/pion/logging"
 	"github.com/pion/sctp"
+	"github.com/refraction-networking/conjure/pkg/heartbeat"
 )
 
 // Dial creates a DTLS connection to the given network address using the given shared secret
@@ -89,6 +90,11 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 	}
 
 	sctpConn := &sctpConn{Stream: sctpRWC, DTLSConn: dtlsConn}
+
+	err = heartbeat.Client(sctpConn, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error starting heartbeat: %v", err)
+	}
 
 	return sctpConn, nil
 }
