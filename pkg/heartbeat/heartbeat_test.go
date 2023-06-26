@@ -26,13 +26,18 @@ func TestReadWrite(t *testing.T) {
 
 	go func() {
 		for {
-			buffer := make([]byte, 4096)
-			n, err := s.Read(buffer)
-			if err != nil {
-				continue
+			select {
+			case <-stop:
+				return
+			default:
+				buffer := make([]byte, 4096)
+				n, err := s.Read(buffer)
+				if err != nil {
+					continue
+				}
+				require.Equal(t, toSend, buffer[:n])
+				recvd++
 			}
-			require.Equal(t, toSend, buffer[:n])
-			recvd++
 		}
 	}()
 
