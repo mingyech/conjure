@@ -91,7 +91,7 @@ func TestSend(t *testing.T) {
 			require.Equal(t, conf.Heartbeat, b)
 			hbCount++
 		case <-stop:
-			require.Equal(t, duration+1, hbCount)
+			require.Equal(t, duration*2+1, hbCount)
 			return
 		}
 	}

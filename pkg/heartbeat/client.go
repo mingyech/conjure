@@ -15,7 +15,7 @@ func Client(conn net.Conn, config *Config) error {
 				return
 			}
 
-			time.Sleep(conf.Interval)
+			time.Sleep(conf.Interval / 2)
 		}
 
 	}()

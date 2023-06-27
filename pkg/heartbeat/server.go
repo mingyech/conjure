@@ -10,7 +10,7 @@ import (
 type serverConn struct {
 	conn    net.Conn
 	recvCh  chan errBytes
-	waiting atomic.Bool
+	waiting uint32
 	hb      []byte
 	timeout time.Duration
 }
@@ -30,7 +30,7 @@ func Server(conn net.Conn, config *Config) (net.Conn, error) {
 		hb:      conf.Heartbeat,
 	}
 
-	c.waiting.Store(false)
+	atomic.StoreUint32(&c.waiting, 2)
 
 	go c.recvLoop()
 	go c.hbLoop()
@@ -40,12 +40,12 @@ func Server(conn net.Conn, config *Config) (net.Conn, error) {
 
 func (c *serverConn) hbLoop() {
 	for {
-		if c.waiting.Load() {
+		if atomic.LoadUint32(&c.waiting) == 0 {
 			c.conn.Close()
 			return
 		}
 
-		c.waiting.Store(true)
+		atomic.StoreUint32(&c.waiting, 0)
 		time.Sleep(c.timeout)
 	}
 
@@ -59,7 +59,7 @@ func (c *serverConn) recvLoop() {
 		n, err := c.conn.Read(buffer)
 
 		if bytes.Equal(c.hb, buffer[:n]) {
-			c.waiting.Store(false)
+			atomic.AddUint32(&c.waiting, 1)
 			continue
 		}
 
