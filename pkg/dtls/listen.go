@@ -13,7 +13,6 @@ import (
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
 	"github.com/pion/logging"
 	"github.com/pion/sctp"
-	"github.com/refraction-networking/conjure/pkg/heartbeat"
 )
 
 // Listener represents a DTLS Listener
@@ -120,12 +119,7 @@ func wrapSCTP(conn net.Conn) (net.Conn, error) {
 
 	sctpConn := &sctpConn{Stream: sctpStream, DTLSConn: conn}
 
-	hbConn, err := heartbeat.Server(sctpConn, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error wrapping heartbeat: %v", err)
-	}
-
-	return hbConn, nil
+	return sctpConn, nil
 
 }
 
