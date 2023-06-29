@@ -88,7 +88,7 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 		return nil, fmt.Errorf("error setting up stream: %v", err)
 	}
 
-	sctpConn := newSCTPConn(sctpStream, conn)
+	sctpConn := newSCTPConn(sctpStream, dtlsConn)
 
 	return sctpConn, nil
 }

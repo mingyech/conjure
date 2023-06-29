@@ -1,18 +1,19 @@
 package dtls
 
 import (
-	"io"
 	"net"
 	"time"
+
+	"github.com/pion/sctp"
 )
 
 // sctpConn implements the net.Conn interface using sctp stream and DTLS conn
 type sctpConn struct {
-	stream io.ReadWriteCloser
+	stream *sctp.Stream
 	conn   net.Conn
 }
 
-func newSCTPConn(stream io.ReadWriteCloser, conn net.Conn) *sctpConn {
+func newSCTPConn(stream *sctp.Stream, conn net.Conn) *sctpConn {
 	return &sctpConn{stream: stream, conn: conn}
 }
 
@@ -49,5 +50,5 @@ func (s *sctpConn) SetWriteDeadline(t time.Time) error {
 }
 
 func (s *sctpConn) SetReadDeadline(t time.Time) error {
-	return s.conn.SetReadDeadline(t)
+	return s.stream.SetReadDeadline(t)
 }
