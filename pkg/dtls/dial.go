@@ -82,13 +82,13 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 		return nil, fmt.Errorf("error creating sctp client: %v", err)
 	}
 
-	sctpRWC, err := sctpClient.OpenStream(0, sctp.PayloadTypeWebRTCString)
+	sctpStream, err := sctpClient.OpenStream(0, sctp.PayloadTypeWebRTCString)
 
 	if err != nil {
 		return nil, fmt.Errorf("error setting up stream: %v", err)
 	}
 
-	sctpConn := &sctpConn{Stream: sctpRWC, DTLSConn: dtlsConn}
+	sctpConn := newSCTPConn(sctpStream, conn)
 
 	return sctpConn, nil
 }

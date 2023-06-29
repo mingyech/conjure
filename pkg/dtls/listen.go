@@ -117,7 +117,7 @@ func wrapSCTP(conn net.Conn) (net.Conn, error) {
 		return nil, err
 	}
 
-	sctpConn := &sctpConn{Stream: sctpStream, DTLSConn: conn}
+	sctpConn := newSCTPConn(sctpStream, conn)
 
 	return sctpConn, nil
 
