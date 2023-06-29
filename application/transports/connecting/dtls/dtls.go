@@ -11,6 +11,7 @@ import (
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/core"
 	"github.com/refraction-networking/conjure/pkg/dtls"
+	"github.com/refraction-networking/conjure/pkg/heartbeat"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -114,7 +115,12 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 		select {
 		case conn := <-connCh:
 			if conn != nil {
-				return conn, nil // success, so return the connection
+				hbConn, err := heartbeat.Server(conn, nil)
+				if err != nil {
+					return nil, fmt.Errorf("error adding heartbeat: %v", err)
+				}
+
+				return hbConn, nil // success, so return the connection
 			}
 		case err := <-errCh:
 			if err != nil { // store the error
