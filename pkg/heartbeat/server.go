@@ -22,7 +22,7 @@ type errBytes struct {
 
 // Server listens for heartbeat over conn with config
 func Server(conn net.Conn, config *Config) (net.Conn, error) {
-	conf := validate(*config)
+	conf := validate(config)
 
 	c := &serverConn{conn: conn,
 		recvCh:  make(chan errBytes),
