@@ -119,6 +119,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 				if err != nil {
 					return nil, fmt.Errorf("error adding heartbeat: %v", err)
 				}
+				fmt.Printf("**********returning connj****************\n")
 
 				return hbConn, nil // success, so return the connection
 			}
