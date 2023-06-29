@@ -251,6 +251,7 @@ func Proxy(reg *DecoyRegistration, clientConn net.Conn, logger *log.Logger) {
 	wg.Add(2)
 
 	getProxyStats().addSession()
+	fmt.Printf("--------------proxying conn--------------\n")
 
 	go halfPipe(clientConn, covertConn, &wg, &oncePrintErr, logger, "Up "+reg.IDString(), tunStats)
 	go halfPipe(covertConn, clientConn, &wg, &oncePrintErr, logger, "Down "+reg.IDString(), tunStats)
