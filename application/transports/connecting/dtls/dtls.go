@@ -115,12 +115,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 		select {
 		case conn := <-connCh:
 			if conn != nil {
-				sctpConn, err := dtls.AcceptSCTP(conn)
-				if err != nil {
-					return nil, fmt.Errorf("error accepting SCTP: %v", err)
-				}
-
-				hbConn, err := heartbeat.Server(sctpConn, nil)
+				hbConn, err := heartbeat.Server(conn, nil)
 				if err != nil {
 					return nil, fmt.Errorf("error adding heartbeat: %v", err)
 				}

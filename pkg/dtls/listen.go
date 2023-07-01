@@ -11,6 +11,8 @@ import (
 
 	"github.com/mingyech/dtls/v2"
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
+	"github.com/pion/logging"
+	"github.com/pion/sctp"
 )
 
 // Listener represents a DTLS Listener
@@ -97,6 +99,30 @@ func (l *Listener) getCertificateFromClientHello(clientHello *dtls.ClientHelloIn
 	return certs.serverCert, nil
 }
 
+func wrapSCTP(conn net.Conn) (net.Conn, error) {
+
+	// Start SCTP over DTLS connection
+	sctpConfig := sctp.Config{
+		NetConn:       conn,
+		LoggerFactory: logging.NewDefaultLoggerFactory(),
+	}
+
+	sctpServer, err := sctp.Server(sctpConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	sctpStream, err := sctpServer.AcceptStream()
+	if err != nil {
+		return nil, err
+	}
+
+	sctpConn := newSCTPConn(sctpStream, conn)
+
+	return sctpConn, nil
+
+}
+
 func ServerWithContext(ctx context.Context, conn net.Conn, sharedSecret []byte) (net.Conn, error) {
 
 	clientCert, serverCert, err := certsFromSeed(sharedSecret)
@@ -127,7 +153,13 @@ func ServerWithContext(ctx context.Context, conn net.Conn, sharedSecret []byte) 
 		return nil, err
 	}
 
-	return dtlsConn, nil
+	sctpConn, err := wrapSCTP(dtlsConn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return sctpConn, nil
 
 }
 
@@ -147,6 +179,11 @@ func (l *Listener) acceptLoop() {
 			connState := newDTLSConn.ConnectionState()
 			connID := connState.RemoteRandomBytes()
 
+			sctpConn, err := wrapSCTP(newDTLSConn)
+			if err != nil {
+				return
+			}
+
 			l.connMapMutex.RLock()
 			defer l.connMapMutex.RUnlock()
 
@@ -156,7 +193,7 @@ func (l *Listener) acceptLoop() {
 				return
 			}
 
-			acceptCh <- newDTLSConn
+			acceptCh <- sctpConn
 
 			close(acceptCh)
 		}()

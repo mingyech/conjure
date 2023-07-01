@@ -1,25 +1,23 @@
 package dtls
 
 import (
-	"fmt"
 	"net"
 	"time"
 
-	"github.com/pion/logging"
 	"github.com/pion/sctp"
 )
 
-// SCTPConn implements the net.Conn interface using sctp stream and DTLS conn
-type SCTPConn struct {
+// sctpConn implements the net.Conn interface using sctp stream and DTLS conn
+type sctpConn struct {
 	stream *sctp.Stream
 	conn   net.Conn
 }
 
-func newSCTPConn(stream *sctp.Stream, conn net.Conn) *SCTPConn {
-	return &SCTPConn{stream: stream, conn: conn}
+func newSCTPConn(stream *sctp.Stream, conn net.Conn) *sctpConn {
+	return &sctpConn{stream: stream, conn: conn}
 }
 
-func (s *SCTPConn) Close() error {
+func (s *sctpConn) Close() error {
 	err := s.stream.Close()
 	if err != nil {
 		return err
@@ -27,78 +25,30 @@ func (s *SCTPConn) Close() error {
 	return s.conn.Close()
 }
 
-func (s *SCTPConn) Write(b []byte) (int, error) {
+func (s *sctpConn) Write(b []byte) (int, error) {
 	return s.stream.Write(b)
 }
 
-func (s *SCTPConn) Read(b []byte) (int, error) {
+func (s *sctpConn) Read(b []byte) (int, error) {
 	return s.stream.Read(b)
 }
 
-func (s *SCTPConn) LocalAddr() net.Addr {
+func (s *sctpConn) LocalAddr() net.Addr {
 	return s.conn.LocalAddr()
 }
 
-func (s *SCTPConn) RemoteAddr() net.Addr {
+func (s *sctpConn) RemoteAddr() net.Addr {
 	return s.conn.RemoteAddr()
 }
 
-func (s *SCTPConn) SetDeadline(t time.Time) error {
+func (s *sctpConn) SetDeadline(t time.Time) error {
 	return s.conn.SetDeadline(t)
 }
 
-func (s *SCTPConn) SetWriteDeadline(t time.Time) error {
+func (s *sctpConn) SetWriteDeadline(t time.Time) error {
 	return s.conn.SetWriteDeadline(t)
 }
 
-func (s *SCTPConn) SetReadDeadline(t time.Time) error {
+func (s *sctpConn) SetReadDeadline(t time.Time) error {
 	return s.stream.SetReadDeadline(t)
-}
-
-func OpenSCTP(conn net.Conn) (*SCTPConn, error) {
-	// Start SCTP
-	sctpConf := sctp.Config{
-		NetConn:       conn,
-		LoggerFactory: logging.NewDefaultLoggerFactory(),
-	}
-
-	sctpClient, err := sctp.Client(sctpConf)
-
-	if err != nil {
-		return nil, fmt.Errorf("error creating sctp client: %v", err)
-	}
-
-	sctpStream, err := sctpClient.OpenStream(0, sctp.PayloadTypeWebRTCString)
-
-	if err != nil {
-		return nil, fmt.Errorf("error setting up stream: %v", err)
-	}
-
-	sctpConn := newSCTPConn(sctpStream, conn)
-
-	return sctpConn, nil
-}
-
-func AcceptSCTP(conn net.Conn) (*SCTPConn, error) {
-
-	// Start SCTP over DTLS connection
-	sctpConfig := sctp.Config{
-		NetConn:       conn,
-		LoggerFactory: logging.NewDefaultLoggerFactory(),
-	}
-
-	sctpServer, err := sctp.Server(sctpConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	sctpStream, err := sctpServer.AcceptStream()
-	if err != nil {
-		return nil, err
-	}
-
-	sctpConn := newSCTPConn(sctpStream, conn)
-
-	return sctpConn, nil
-
 }
