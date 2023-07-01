@@ -9,6 +9,8 @@ import (
 
 	"github.com/mingyech/dtls/v2"
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
+	"github.com/pion/logging"
+	"github.com/pion/sctp"
 )
 
 // Dial creates a DTLS connection to the given network address using the given shared secret
@@ -16,6 +18,7 @@ func Dial(remoteAddr *net.UDPAddr, secret []byte) (net.Conn, error) {
 	return DialWithContext(context.Background(), remoteAddr, secret)
 }
 
+// DialWithContext like Dial, but includes context for cancellation and timeouts.
 func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
 	conn, err := net.DialUDP("udp", nil, remoteAddr)
 	if err != nil {
@@ -23,6 +26,11 @@ func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) 
 	}
 
 	return ClientWithContext(ctx, conn, seed)
+}
+
+// Client establishes a DTLS connection using an existing connection and a seed.
+func Client(conn net.Conn, seed []byte) (net.Conn, error) {
+	return ClientWithContext(context.Background(), conn, seed)
 }
 
 // DialWithContext creates a DTLS connection to the given network address using the given shared secret
@@ -68,5 +76,25 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 		return nil, fmt.Errorf("error creating dtls connection: %v", err)
 	}
 
-	return dtlsConn, nil
+	// Start SCTP
+	sctpConf := sctp.Config{
+		NetConn:       dtlsConn,
+		LoggerFactory: logging.NewDefaultLoggerFactory(),
+	}
+
+	sctpClient, err := sctp.Client(sctpConf)
+
+	if err != nil {
+		return nil, fmt.Errorf("error creating sctp client: %v", err)
+	}
+
+	sctpStream, err := sctpClient.OpenStream(0, sctp.PayloadTypeWebRTCString)
+
+	if err != nil {
+		return nil, fmt.Errorf("error setting up stream: %v", err)
+	}
+
+	sctpConn := newSCTPConn(sctpStream, dtlsConn)
+
+	return sctpConn, nil
 }

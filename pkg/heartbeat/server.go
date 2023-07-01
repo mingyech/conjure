@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var maxMessageSize = 65535
+
 type serverConn struct {
 	conn    net.Conn
 	recvCh  chan errBytes
@@ -54,7 +56,7 @@ func (c *serverConn) hbLoop() {
 func (c *serverConn) recvLoop() {
 	for {
 		// create a buffer to hold your data
-		buffer := make([]byte, 2048)
+		buffer := make([]byte, maxMessageSize)
 
 		n, err := c.conn.Read(buffer)
 
