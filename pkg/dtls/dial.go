@@ -9,8 +9,6 @@ import (
 
 	"github.com/mingyech/dtls/v2"
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
-	"github.com/pion/logging"
-	"github.com/pion/sctp"
 )
 
 // Dial creates a DTLS connection to the given network address using the given shared secret
@@ -76,25 +74,5 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 		return nil, fmt.Errorf("error creating dtls connection: %v", err)
 	}
 
-	// Start SCTP
-	sctpConf := sctp.Config{
-		NetConn:       dtlsConn,
-		LoggerFactory: logging.NewDefaultLoggerFactory(),
-	}
-
-	sctpClient, err := sctp.Client(sctpConf)
-
-	if err != nil {
-		return nil, fmt.Errorf("error creating sctp client: %v", err)
-	}
-
-	sctpStream, err := sctpClient.OpenStream(0, sctp.PayloadTypeWebRTCString)
-
-	if err != nil {
-		return nil, fmt.Errorf("error setting up stream: %v", err)
-	}
-
-	sctpConn := newSCTPConn(sctpStream, dtlsConn)
-
-	return sctpConn, nil
+	return dtlsConn, nil
 }
