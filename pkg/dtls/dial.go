@@ -18,6 +18,7 @@ func Dial(remoteAddr *net.UDPAddr, secret []byte) (net.Conn, error) {
 	return DialWithContext(context.Background(), remoteAddr, secret)
 }
 
+// DialWithContext like Dial, but includes context for cancellation and timeouts.
 func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
 	conn, err := net.DialUDP("udp", nil, remoteAddr)
 	if err != nil {
@@ -25,6 +26,11 @@ func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) 
 	}
 
 	return ClientWithContext(ctx, conn, seed)
+}
+
+// Client establishes a DTLS connection using an existing connection and a seed.
+func Client(conn net.Conn, seed []byte) (net.Conn, error) {
+	return ClientWithContext(context.Background(), conn, seed)
 }
 
 // DialWithContext creates a DTLS connection to the given network address using the given shared secret

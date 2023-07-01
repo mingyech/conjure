@@ -123,6 +123,12 @@ func wrapSCTP(conn net.Conn) (net.Conn, error) {
 
 }
 
+// Server establishes DTLS connection on the given conn using the sharedSecert
+func Server(conn net.Conn, sharedSecret []byte) (net.Conn, error) {
+	return ServerWithContext(context.Background(), conn, sharedSecret)
+}
+
+// ServerWithContext establishes DTLS connection on the given conn using the sharedSecert and context
 func ServerWithContext(ctx context.Context, conn net.Conn, sharedSecret []byte) (net.Conn, error) {
 
 	clientCert, serverCert, err := certsFromSeed(sharedSecret)
