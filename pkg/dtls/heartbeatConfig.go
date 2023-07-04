@@ -1,8 +1,8 @@
-package heartbeat
+package dtls
 
 import "time"
 
-type Config struct {
+type heartbeatConfig struct {
 
 	// Heartbeat is the payload to sent as the heartbeat
 	Heartbeat []byte
@@ -11,7 +11,7 @@ type Config struct {
 	Interval time.Duration
 }
 
-func validate(conf *Config) Config {
+func validate(conf *heartbeatConfig) heartbeatConfig {
 	if conf == nil {
 		return defaultConfig
 	}
@@ -28,7 +28,7 @@ func validate(conf *Config) Config {
 	return c
 }
 
-var defaultConfig = Config{
+var defaultConfig = heartbeatConfig{
 	Heartbeat: []byte("6v3jyM521GkBo1lsMyVLcRyzdZ7FKEM3"),
 	Interval:  30 * time.Second,
 }

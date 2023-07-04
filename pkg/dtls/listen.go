@@ -98,14 +98,14 @@ func (l *Listener) getCertificateFromClientHello(clientHello *dtls.ClientHelloIn
 }
 
 // Server establishes DTLS connection on the given conn using the sharedSecert
-func Server(conn net.Conn, sharedSecret []byte) (net.Conn, error) {
-	return ServerWithContext(context.Background(), conn, sharedSecret)
+func Server(conn net.Conn, config *Config) (net.Conn, error) {
+	return ServerWithContext(context.Background(), conn, config)
 }
 
 // ServerWithContext establishes DTLS connection on the given conn using the sharedSecert and context
-func ServerWithContext(ctx context.Context, conn net.Conn, sharedSecret []byte) (net.Conn, error) {
+func ServerWithContext(ctx context.Context, conn net.Conn, config *Config) (net.Conn, error) {
 
-	clientCert, serverCert, err := certsFromSeed(sharedSecret)
+	clientCert, serverCert, err := certsFromSeed(config.PSK)
 	if err != nil {
 		return nil, fmt.Errorf("error generating certificatess from seed: %v", err)
 	}
@@ -120,21 +120,24 @@ func ServerWithContext(ctx context.Context, conn net.Conn, sharedSecret []byte) 
 		return nil
 	}
 
-	config := &dtls.Config{
+	dtlsConf := &dtls.Config{
 		ExtendedMasterSecret:  dtls.RequireExtendedMasterSecret,
 		ClientAuth:            dtls.RequireAnyClientCert,
 		Certificates:          []tls.Certificate{*serverCert},
 		VerifyPeerCertificate: VerifyPeerCertificate,
 	}
 
-	dtlsConn, err := dtls.ServerWithContext(ctx, conn, config)
-
+	dtlsConn, err := dtls.ServerWithContext(ctx, conn, dtlsConf)
 	if err != nil {
 		return nil, err
 	}
 
-	return dtlsConn, nil
+	wrappedConn, err := wrapSCTP(dtlsConn, config)
+	if err != nil {
+		return nil, err
+	}
 
+	return wrappedConn, nil
 }
 
 func (l *Listener) acceptLoop() {
@@ -209,19 +212,19 @@ func verifyCert(cert, correct []byte) error {
 }
 
 // AcceptFromSecret accepts a connection with shared secret
-func (l *Listener) AcceptFromSecret(secret []byte) (net.Conn, error) {
+func (l *Listener) AcceptFromSecret(config *Config) (net.Conn, error) {
 	// Call the new function with a background context
-	return l.AcceptFromSecretWithContext(context.Background(), secret)
+	return l.AcceptFromSecretWithContext(context.Background(), config)
 }
 
 // AcceptFromSecretWithContext accepts a connection with shared secret, with a context
-func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, secret []byte) (net.Conn, error) {
-	clientCert, serverCert, err := certsFromSeed(secret)
+func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, config *Config) (net.Conn, error) {
+	clientCert, serverCert, err := certsFromSeed(config.PSK)
 	if err != nil {
 		return &dtls.Conn{}, fmt.Errorf("error generating certificatess from seed: %v", err)
 	}
 
-	connID, err := clientHelloRandomFromSeed(secret)
+	connID, err := clientHelloRandomFromSeed(config.PSK)
 	if err != nil {
 		return &dtls.Conn{}, err
 	}
@@ -235,10 +238,13 @@ func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, secret []byt
 	}
 	defer l.removeChannel(connID)
 
-	// Adding context-aware select statement for cancellation
 	select {
 	case conn := <-connCh:
-		return conn, nil
+		wrappedConn, err := wrapSCTP(conn, config)
+		if err != nil {
+			return nil, err
+		}
+		return wrappedConn, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

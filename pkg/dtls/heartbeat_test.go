@@ -1,4 +1,4 @@
-package heartbeat
+package dtls
 
 import (
 	"net"
@@ -9,15 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var conf = &Config{Interval: 1 * time.Second, Heartbeat: []byte("hihihihihihihihihi")}
+var conf = &heartbeatConfig{Interval: 1 * time.Second, Heartbeat: []byte("hihihihihihihihihi")}
 
-func TestReadWrite(t *testing.T) {
+func TestHeartbeatReadWrite(t *testing.T) {
 	server, client := net.Pipe()
 
-	s, err := Server(server, conf)
+	s, err := heartbeatServer(server, conf)
 	require.Nil(t, err)
 
-	err = Client(client, conf)
+	err = heartbeatClient(client, conf)
 	require.Nil(t, err)
 
 	sent := uint32(0)
@@ -61,7 +61,7 @@ func TestReadWrite(t *testing.T) {
 	require.Equal(t, atomic.LoadUint32(&sent), atomic.LoadUint32(&recvd))
 }
 
-func TestSend(t *testing.T) {
+func TestHeartbeatSend(t *testing.T) {
 	server, client := net.Pipe()
 
 	readCh := make(chan []byte)
@@ -78,7 +78,7 @@ func TestSend(t *testing.T) {
 		}
 	}()
 
-	err := Client(client, conf)
+	err := heartbeatClient(client, conf)
 	require.Nil(t, err)
 
 	duration := 2
@@ -98,7 +98,7 @@ func TestSend(t *testing.T) {
 
 }
 
-func TestTimeout(t *testing.T) {
+func TestHeartbeatTimeout(t *testing.T) {
 	server, client := net.Pipe()
 	go func() {
 		for {
@@ -110,7 +110,7 @@ func TestTimeout(t *testing.T) {
 		}
 	}()
 
-	s, err := Server(server, conf)
+	s, err := heartbeatServer(server, conf)
 	require.Nil(t, err)
 
 	_, err = s.Write([]byte("123"))

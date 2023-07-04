@@ -5,6 +5,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -24,7 +25,7 @@ func TestSend(t *testing.T) {
 
 	go func() {
 		defer wg.Done()
-		s, err := Server(server, sharedSecret)
+		s, err := Server(server, &Config{PSK: sharedSecret, SCTP: ServerAccept})
 		require.Nil(t, err)
 
 		received := make([]byte, size)
@@ -34,7 +35,9 @@ func TestSend(t *testing.T) {
 		require.Equal(t, toSend, received)
 	}()
 
-	c, err := Client(client, sharedSecret)
+	time.Sleep(1 * time.Second)
+
+	c, err := Client(client, &Config{PSK: sharedSecret, SCTP: ClientOpen})
 	require.Nil(t, err)
 
 	n, err := c.Write(toSend)
