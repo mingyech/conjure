@@ -11,7 +11,6 @@ import (
 	"github.com/refraction-networking/conjure/application/transports"
 	"github.com/refraction-networking/conjure/pkg/core"
 	"github.com/refraction-networking/conjure/pkg/dtls"
-	"github.com/refraction-networking/conjure/pkg/heartbeat"
 	pb "github.com/refraction-networking/gotapdance/protobuf"
 	"google.golang.org/protobuf/types/known/anypb"
 )
@@ -91,7 +90,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 			return
 		}
 
-		dtlsConn, err := dtls.ClientWithContext(ctx, udpConn, reg.Keys.SharedSecret)
+		dtlsConn, err := dtls.ClientWithContext(ctx, udpConn, &dtls.Config{PSK: reg.Keys.SharedSecret, SCTP: dtls.ServerAccept})
 		if err != nil {
 			errCh <- fmt.Errorf("error connecting to dtls client: %v", err)
 			return
@@ -101,7 +100,7 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 	}()
 
 	go func() {
-		conn, err := t.dtlsListener.AcceptFromSecretWithContext(ctx, reg.Keys.SharedSecret)
+		conn, err := t.dtlsListener.AcceptWithContext(ctx, &dtls.Config{PSK: reg.Keys.SharedSecret, SCTP: dtls.ServerAccept})
 		if err != nil {
 			errCh <- fmt.Errorf("error accepting dtls connection from secret: %v", err)
 			return
@@ -115,13 +114,9 @@ func (t *Transport) Connect(ctx context.Context, reg *dd.DecoyRegistration) (net
 		select {
 		case conn := <-connCh:
 			if conn != nil {
-				hbConn, err := heartbeat.Server(conn, nil)
-				if err != nil {
-					return nil, fmt.Errorf("error adding heartbeat: %v", err)
-				}
 				fmt.Printf("**********returning connj****************\n")
 
-				return hbConn, nil // success, so return the connection
+				return conn, nil // success, so return the connection
 			}
 		case err := <-errCh:
 			if err != nil { // store the error

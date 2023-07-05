@@ -9,39 +9,37 @@ import (
 
 	"github.com/mingyech/dtls/v2"
 	"github.com/mingyech/dtls/v2/pkg/protocol/handshake"
-	"github.com/pion/logging"
-	"github.com/pion/sctp"
 )
 
 // Dial creates a DTLS connection to the given network address using the given shared secret
-func Dial(remoteAddr *net.UDPAddr, secret []byte) (net.Conn, error) {
-	return DialWithContext(context.Background(), remoteAddr, secret)
+func Dial(remoteAddr *net.UDPAddr, config *Config) (net.Conn, error) {
+	return DialWithContext(context.Background(), remoteAddr, config)
 }
 
 // DialWithContext like Dial, but includes context for cancellation and timeouts.
-func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, seed []byte) (net.Conn, error) {
+func DialWithContext(ctx context.Context, remoteAddr *net.UDPAddr, config *Config) (net.Conn, error) {
 	conn, err := net.DialUDP("udp", nil, remoteAddr)
 	if err != nil {
 		return nil, err
 	}
 
-	return ClientWithContext(ctx, conn, seed)
+	return ClientWithContext(ctx, conn, config)
 }
 
 // Client establishes a DTLS connection using an existing connection and a seed.
-func Client(conn net.Conn, seed []byte) (net.Conn, error) {
-	return ClientWithContext(context.Background(), conn, seed)
+func Client(conn net.Conn, config *Config) (net.Conn, error) {
+	return ClientWithContext(context.Background(), conn, config)
 }
 
 // DialWithContext creates a DTLS connection to the given network address using the given shared secret
-func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Conn, error) {
-	clientCert, serverCert, err := certsFromSeed(seed)
+func ClientWithContext(ctx context.Context, conn net.Conn, config *Config) (net.Conn, error) {
+	clientCert, serverCert, err := certsFromSeed(config.PSK)
 
 	if err != nil {
 		return nil, fmt.Errorf("error generating certs: %v", err)
 	}
 
-	clientHelloRandom, err := clientHelloRandomFromSeed(seed)
+	clientHelloRandom, err := clientHelloRandomFromSeed(config.PSK)
 	if err != nil {
 		return nil, fmt.Errorf("error generating client hello random: %v", err)
 	}
@@ -60,7 +58,7 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 	}
 
 	// Prepare the configuration of the DTLS connection
-	config := &dtls.Config{
+	dtlsConf := &dtls.Config{
 		Certificates:            []tls.Certificate{*clientCert},
 		ExtendedMasterSecret:    dtls.RequireExtendedMasterSecret,
 		CustomClientHelloRandom: func() [handshake.RandomBytesLength]byte { return clientHelloRandom },
@@ -70,31 +68,16 @@ func ClientWithContext(ctx context.Context, conn net.Conn, seed []byte) (net.Con
 		VerifyPeerCertificate: verifyServerCertificate,
 	}
 
-	dtlsConn, err := dtls.ClientWithContext(ctx, conn, config)
+	dtlsConn, err := dtls.ClientWithContext(ctx, conn, dtlsConf)
 
 	if err != nil {
 		return nil, fmt.Errorf("error creating dtls connection: %v", err)
 	}
 
-	// Start SCTP
-	sctpConf := sctp.Config{
-		NetConn:       dtlsConn,
-		LoggerFactory: logging.NewDefaultLoggerFactory(),
-	}
-
-	sctpClient, err := sctp.Client(sctpConf)
-
+	wrappedConn, err := wrapSCTP(dtlsConn, config)
 	if err != nil {
-		return nil, fmt.Errorf("error creating sctp client: %v", err)
+		return nil, err
 	}
 
-	sctpStream, err := sctpClient.OpenStream(0, sctp.PayloadTypeWebRTCString)
-
-	if err != nil {
-		return nil, fmt.Errorf("error setting up stream: %v", err)
-	}
-
-	sctpConn := newSCTPConn(sctpStream, dtlsConn)
-
-	return sctpConn, nil
+	return wrappedConn, nil
 }

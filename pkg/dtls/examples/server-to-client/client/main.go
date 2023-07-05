@@ -79,7 +79,7 @@ func main() {
 		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr)
 		util.Check(err)
 
-		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
+		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, &dtls.Config{PSK: sharedSecret, SCTP: dtls.ServerAccept})
 		util.Check(err)
 
 		fmt.Println("new connection")
@@ -116,7 +116,7 @@ func main() {
 		udpConn, err := reuseport.Dial("udp", *localAddr, *remoteAddr2)
 		util.Check(err)
 
-		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, sharedSecret)
+		dtlsConn, err := dtls.ClientWithContext(context.Background(), udpConn, &dtls.Config{PSK: sharedSecret, SCTP: dtls.ServerAccept})
 		util.Check(err)
 
 		fmt.Println("new connection")

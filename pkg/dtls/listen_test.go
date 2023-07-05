@@ -1,8 +1,11 @@
 package dtls
 
 import (
+	"crypto/rand"
 	"net"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -13,14 +16,16 @@ func TestSend(t *testing.T) {
 	size := 65535
 	toSend := make([]byte, size)
 
-	for i := range toSend {
-		toSend[i] = byte('a')
-	}
+	rand.Read(toSend)
 
 	server, client := net.Pipe()
 
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	go func() {
-		s, err := Server(server, sharedSecret)
+		defer wg.Done()
+		s, err := Server(server, &Config{PSK: sharedSecret, SCTP: ServerAccept})
 		require.Nil(t, err)
 
 		received := make([]byte, size)
@@ -30,9 +35,14 @@ func TestSend(t *testing.T) {
 		require.Equal(t, toSend, received)
 	}()
 
-	c, err := Client(client, sharedSecret)
+	time.Sleep(1 * time.Second)
+
+	c, err := Client(client, &Config{PSK: sharedSecret, SCTP: ClientOpen})
 	require.Nil(t, err)
 
-	_, err = c.Write(toSend)
+	n, err := c.Write(toSend)
 	require.Nil(t, err)
+	require.Equal(t, len(toSend), n)
+
+	wg.Wait()
 }
