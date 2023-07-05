@@ -42,7 +42,7 @@ func main() {
 	go func() {
 		for {
 			// Wait for a connection.
-			conn, err := listener.AcceptFromSecret(sharedSecret)
+			conn, err := listener.Accept(&dtls.Config{PSK: sharedSecret, SCTP: dtls.ClientOpen})
 			util.Check(err)
 
 			fmt.Println("new connection")

@@ -211,14 +211,14 @@ func verifyCert(cert, correct []byte) error {
 	return nil
 }
 
-// AcceptFromSecret accepts a connection with shared secret
-func (l *Listener) AcceptFromSecret(config *Config) (net.Conn, error) {
+// Accept accepts a connection with shared secret
+func (l *Listener) Accept(config *Config) (net.Conn, error) {
 	// Call the new function with a background context
-	return l.AcceptFromSecretWithContext(context.Background(), config)
+	return l.AcceptWithContext(context.Background(), config)
 }
 
-// AcceptFromSecretWithContext accepts a connection with shared secret, with a context
-func (l *Listener) AcceptFromSecretWithContext(ctx context.Context, config *Config) (net.Conn, error) {
+// AcceptWithContext accepts a connection with shared secret, with a context
+func (l *Listener) AcceptWithContext(ctx context.Context, config *Config) (net.Conn, error) {
 	clientCert, serverCert, err := certsFromSeed(config.PSK)
 	if err != nil {
 		return &dtls.Conn{}, fmt.Errorf("error generating certificatess from seed: %v", err)
