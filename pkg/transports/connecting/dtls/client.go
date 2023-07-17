@@ -144,6 +144,11 @@ func (t *ClientTransport) dial(ctx context.Context, dialer dialFunc, address str
 		return nil, fmt.Errorf("error dialing udp: %v", err)
 	}
 
+	err = openUDP(ctx, udpConn.LocalAddr().String(), address, dialer)
+	if err != nil {
+		return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
+	}
+
 	conn, err := dtls.ClientWithContext(ctx, udpConn, &dtls.Config{PSK: t.psk, SCTP: dtls.ClientOpen})
 	if err != nil {
 		return nil, fmt.Errorf("error dialing as client: %v", err)
