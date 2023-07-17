@@ -104,12 +104,7 @@ func (t *ClientTransport) WrapDial(dialer dialFunc) (dialFunc, error) {
 		conn, errDial := t.dial(ctxtimeout, dialer, address)
 		if errDial != nil {
 			// fallback to dial
-			conn, errListen := t.listen(parentctx, dialer, address)
-			if errListen != nil {
-				return nil, fmt.Errorf("error listening: %v, error dialing: %v", errListen, errDial)
-			}
-
-			return conn, nil
+			return nil, errDial
 		}
 
 		return conn, nil
