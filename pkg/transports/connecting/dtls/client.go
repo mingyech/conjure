@@ -134,7 +134,7 @@ func (t *ClientTransport) listen(ctx context.Context, dialer dialFunc, address s
 }
 
 func (t *ClientTransport) dial(ctx context.Context, dialer dialFunc, address string) (net.Conn, error) {
-	laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: t.privPort}
+	laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: 52855}
 	err := openUDP(ctx, laddr.String(), address, dialer)
 	if err != nil {
 		return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
