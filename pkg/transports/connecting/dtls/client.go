@@ -134,7 +134,7 @@ func (t *ClientTransport) listen(ctx context.Context, dialer dialFunc, address s
 }
 
 func (t *ClientTransport) dial(ctx context.Context, dialer dialFunc, address string) (net.Conn, error) {
-	udpConn, err := dialer(ctx, "udp", "", address)
+	udpConn, err := dialer(ctx, "udp", "0.0.0.0:48295", address)
 	if err != nil {
 		return nil, fmt.Errorf("error dialing udp: %v", err)
 	}
