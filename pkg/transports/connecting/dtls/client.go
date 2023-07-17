@@ -98,7 +98,7 @@ func (t *ClientTransport) WrapDial(dialer dialFunc) (dialFunc, error) {
 		// Create a context that will automatically cancel after 5 seconds or when the existing context is cancelled, whichever comes first.
 		parentctx, parentcancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer parentcancel()
-		ctxtimeout, cancel := context.WithTimeout(parentctx, 2*time.Second)
+		ctxtimeout, cancel := context.WithTimeout(parentctx, 5*time.Second)
 		defer cancel()
 
 		conn, errDial := t.dial(ctxtimeout, dialer, address)
