@@ -101,11 +101,11 @@ func (t *ClientTransport) WrapDial(dialer dialFunc) (dialFunc, error) {
 		ctxtimeout, cancel := context.WithTimeout(parentctx, 5*time.Second)
 		defer cancel()
 
-		conn, errListen := t.listen(ctxtimeout, dialer, address)
-		if errListen != nil {
+		conn, errDial := t.dial(ctxtimeout, dialer, address)
+		if errDial != nil {
 			// fallback to dial
-			conn, errDial := t.dial(parentctx, dialer, address)
-			if errDial != nil {
+			conn, errListen := t.listen(parentctx, dialer, address)
+			if errListen != nil {
 				return nil, fmt.Errorf("error listening: %v, error dialing: %v", errListen, errDial)
 			}
 
