@@ -134,14 +134,15 @@ func (t *ClientTransport) listen(ctx context.Context, dialer dialFunc, address s
 }
 
 func (t *ClientTransport) dial(ctx context.Context, dialer dialFunc, address string) (net.Conn, error) {
-	udpConn, err := dialer(ctx, "udp", "0.0.0.0:48295", address)
-	if err != nil {
-		return nil, fmt.Errorf("error dialing udp: %v", err)
-	}
-
-	err = openUDP(ctx, udpConn.LocalAddr().String(), address, dialer)
+	laddr := &net.UDPAddr{IP: net.ParseIP("0.0.0.0"), Port: t.privPort}
+	err := openUDP(ctx, laddr.String(), address, dialer)
 	if err != nil {
 		return nil, fmt.Errorf("error opening UDP port from gateway: %v", err)
+	}
+
+	udpConn, err := dialer(ctx, "udp", laddr.String(), address)
+	if err != nil {
+		return nil, fmt.Errorf("error dialing udp: %v", err)
 	}
 
 	conn, err := dtls.ClientWithContext(ctx, udpConn, &dtls.Config{PSK: t.psk, SCTP: dtls.ClientOpen})
