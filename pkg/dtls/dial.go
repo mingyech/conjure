@@ -66,6 +66,7 @@ func ClientWithContext(ctx context.Context, conn net.Conn, config *Config) (net.
 		// We use VerifyPeerCertificate to authenticate the peer's certificate. This is necessary as Go's non-deterministic ECDSA signatures and hash comparison method for self-signed certificates can cause verification failure.
 		InsecureSkipVerify:    true,
 		VerifyPeerCertificate: verifyServerCertificate,
+		ServerName:            "example.com",
 	}
 
 	dtlsConn, err := dtls.ClientWithContext(ctx, conn, dtlsConf)
