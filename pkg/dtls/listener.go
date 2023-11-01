@@ -141,7 +141,7 @@ func (l *Listener) verifyConnection(state *dtls.State) error {
 		return fmt.Errorf("expected 1 peer certificate, got %v", len(state.PeerCertificates))
 	}
 
-	err := verifyCert(state.PeerCertificates[0], certs.clientCert.Certificate[0])
+	err := VerifyCert(state.PeerCertificates[0], certs.clientCert.Certificate[0])
 	if err != nil {
 		return fmt.Errorf("error verifying peer certificate: %v", err)
 	}
@@ -157,12 +157,12 @@ func (l *Listener) Accept(config *Config) (net.Conn, error) {
 
 // AcceptWithContext accepts a connection with shared secret, with a context
 func (l *Listener) AcceptWithContext(ctx context.Context, config *Config) (net.Conn, error) {
-	clientCert, serverCert, err := certsFromSeed(config.PSK)
+	clientCert, serverCert, err := CertsFromSeed(config.PSK)
 	if err != nil {
 		return &dtls.Conn{}, fmt.Errorf("error generating certificatess from seed: %v", err)
 	}
 
-	connID, err := clientHelloRandomFromSeed(config.PSK)
+	connID, err := ClientHelloRandomFromSeed(config.PSK)
 	if err != nil {
 		return &dtls.Conn{}, err
 	}

@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-func clientHelloRandomFromSeed(seed []byte) ([handshake.RandomBytesLength]byte, error) {
+func ClientHelloRandomFromSeed(seed []byte) ([handshake.RandomBytesLength]byte, error) {
 	randSource := hkdf.New(sha256.New, seed, nil, nil)
 	randomBytes := [handshake.RandomBytesLength]byte{}
 
@@ -109,7 +109,7 @@ func newCertificate(seed []byte) (*tls.Certificate, error) {
 	}, nil
 }
 
-func certsFromSeed(seed []byte) (*tls.Certificate, *tls.Certificate, error) {
+func CertsFromSeed(seed []byte) (*tls.Certificate, *tls.Certificate, error) {
 	clientCert, err := newCertificate(seed)
 	if err != nil {
 		return &tls.Certificate{}, &tls.Certificate{}, fmt.Errorf("error generate cert: %v", err)

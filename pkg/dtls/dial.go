@@ -33,13 +33,13 @@ func Client(conn net.Conn, config *Config) (net.Conn, error) {
 
 // DialWithContext creates a DTLS connection to the given network address using the given shared secret
 func ClientWithContext(ctx context.Context, conn net.Conn, config *Config) (net.Conn, error) {
-	clientCert, serverCert, err := certsFromSeed(config.PSK)
+	clientCert, serverCert, err := CertsFromSeed(config.PSK)
 
 	if err != nil {
 		return nil, fmt.Errorf("error generating certs: %v", err)
 	}
 
-	clientHelloRandom, err := clientHelloRandomFromSeed(config.PSK)
+	clientHelloRandom, err := ClientHelloRandomFromSeed(config.PSK)
 	if err != nil {
 		return nil, fmt.Errorf("error generating client hello random: %v", err)
 	}
@@ -49,7 +49,7 @@ func ClientWithContext(ctx context.Context, conn net.Conn, config *Config) (net.
 			return fmt.Errorf("expected 1 peer certificate, got %v", len(rawCerts))
 		}
 
-		err := verifyCert(rawCerts[0], serverCert.Certificate[0])
+		err := VerifyCert(rawCerts[0], serverCert.Certificate[0])
 		if err != nil {
 			return fmt.Errorf("error verifying server certificate: %v", err)
 		}

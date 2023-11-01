@@ -23,14 +23,14 @@ func Server(conn net.Conn, config *Config) (net.Conn, error) {
 // ServerWithContext establishes DTLS connection on the given conn using the sharedSecert and context
 func ServerWithContext(ctx context.Context, conn net.Conn, config *Config) (net.Conn, error) {
 
-	clientCert, serverCert, err := certsFromSeed(config.PSK)
+	clientCert, serverCert, err := CertsFromSeed(config.PSK)
 	if err != nil {
 		return nil, fmt.Errorf("error generating certificatess from seed: %v", err)
 	}
 
 	VerifyPeerCertificate := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 
-		err := verifyCert(rawCerts[0], clientCert.Certificate[0])
+		err := VerifyCert(rawCerts[0], clientCert.Certificate[0])
 		if err != nil {
 			return fmt.Errorf("error verifying peer certificate: %v", err)
 		}
@@ -59,7 +59,7 @@ func ServerWithContext(ctx context.Context, conn net.Conn, config *Config) (net.
 	return wrappedConn, nil
 }
 
-func verifyCert(cert, correct []byte) error {
+func VerifyCert(cert, correct []byte) error {
 	incommingCert, err := x509.ParseCertificate(cert)
 	if err != nil {
 		return fmt.Errorf("error parsing peer certificate: %v", err)
