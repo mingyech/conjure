@@ -16,6 +16,7 @@ import (
 	"github.com/pion/dtls/v2/pkg/protocol/recordlayer"
 	"github.com/refraction-networking/conjure/pkg/core"
 	"github.com/xtaci/kcp-go"
+	"github.com/xtaci/smux"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -72,7 +73,17 @@ func client(pconn net.PacketConn, raddr net.Addr, config Config, keys *core.Shar
 		return nil, err
 	}
 
-	return &Conn{Conn: kcpConn}, nil
+	session, err := smux.Client(kcpConn, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating smux session: %v", err)
+	}
+
+	stream, err := session.OpenStream()
+	if err != nil {
+		return nil, fmt.Errorf("error opening smux stream: %v", err)
+	}
+
+	return &Conn{Conn: stream}, nil
 }
 
 func resolveAddr(network, addrStr string) (net.Addr, error) {

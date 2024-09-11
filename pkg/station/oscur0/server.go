@@ -14,6 +14,7 @@ import (
 	pb "github.com/refraction-networking/conjure/proto"
 	"github.com/refraction-networking/ed25519/extra25519"
 	"github.com/xtaci/kcp-go"
+	"github.com/xtaci/smux"
 	"golang.org/x/crypto/curve25519"
 	"google.golang.org/protobuf/proto"
 )
@@ -161,5 +162,15 @@ func ServerWithContext(ctx context.Context, pconn net.PacketConn, raddr net.Addr
 		return nil, fmt.Errorf("error accepting kcp conn: %v", err)
 	}
 
-	return &Conn{Conn: kcpConn, info: info}, nil
+	session, err := smux.Server(kcpConn, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating smux server: %v", err)
+	}
+
+	stream, err := session.AcceptStream()
+	if err != nil {
+		return nil, fmt.Errorf("error listening smux stream: %v", err)
+	}
+
+	return &Conn{Conn: stream, info: info}, nil
 }
